@@ -20,6 +20,7 @@ type Prescription = {
   instructions: string;
   createdAt: string;
   medicines: Medicine[];
+  consultationId: string;
   smsDelivered: boolean;
   smsPhone: string | null;
   consultation?: {
@@ -92,6 +93,7 @@ function PrescriptionContent() {
           patientName: rx.consultation?.patient?.name ?? "Patient",
           doctorName: rx.doctorName,
           prescriptionId: rx.id,
+          consultationId: consultId || rx.consultationId,
           medicines: rx.medicines,
           instructions: rx.instructions,
         }),

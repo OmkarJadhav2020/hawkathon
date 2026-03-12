@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
             where: { id: prescription.id },
             data: { smsDelivered: true },
           });
+        } else {
+          const twilioErr = await twilioResponse.text();
+          console.error("Twilio API rejected the request:", twilioErr);
         }
       } catch (e) {
         console.error("Twilio SMS error:", e);
