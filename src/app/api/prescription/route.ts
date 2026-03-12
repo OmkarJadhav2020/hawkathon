@@ -21,18 +21,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing patient phone or medicines" }, { status: 400 });
     }
 
-    // Format the SMS message
-    const medsList = payload.medicines.map((m) => `• ${m.name} — ${m.dosage}`).join("\n");
-    const smsBody = `GraamSehat ePrescription
-Ref: ${payload.prescriptionId}
-Patient: ${payload.patientName}
-Dr: ${payload.doctorName}
-
-Medicines:
-${medsList}
-
-${payload.instructions ? `Instructions: ${payload.instructions}\n` : ""}View full Rx at graamsehat.in/rx/${payload.prescriptionId}
-Helpline: 108`;
+    // Format the SMS message (concise for trial limits)
+    const medsList = payload.medicines.map((m) => m.name).join(", ");
+    const smsBody = `GS Rx ${payload.prescriptionId}\n${payload.patientName}: ${medsList}\nView: https://graamsehat.in/rx/${payload.prescriptionId}`;
 
     // If Twilio is configured, send actual SMS
     if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE) {

@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
+// ─── Prescription data (will come from DB later) ─────────────────────────────
+const PATIENT_PHONE = "+917767827080"; // ← put your verified Indian number here e.g. +919876543210
 const medicines = [
   { icon: "pill", name: "Amoxicillin 500mg", quantity: "15 Capsules", dosage: "Take one capsule thrice a day after meals.", schedule: ["MORNING", "AFTERNOON", "NIGHT"], scheduleType: "fixed" },
   { icon: "vaccines", name: "Cough Relief Syrup", quantity: "1 Bottle (100ml)", dosage: "10ml only when coughing persists. Maximum 4 times daily.", schedule: ["SOS / As Needed"], scheduleType: "sos" },
@@ -13,6 +16,31 @@ const pharmacies = [
 ];
 
 export default function EPrescriptionPage() {
+  const [smsStatus, setSmsStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const sendPrescriptionSMS = async () => {
+    setSmsStatus("sending");
+    try {
+      const res = await fetch("/api/prescription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientPhone: PATIENT_PHONE,
+          patientName: "Rajesh Kumar",
+          doctorName: "Dr. Anjali Mehta",
+          prescriptionId: "GS-88291-TX",
+          medicines: medicines.map((m) => ({ name: m.name, dosage: m.dosage })),
+          instructions: "Complete full antibiotic course. Drink warm fluids. Rest for 48 hrs.",
+        }),
+      });
+      const data = await res.json();
+      setSmsStatus(data.smsSent ? "sent" : "error");
+    } catch {
+      setSmsStatus("error");
+    }
+  };
+
+
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       {/* Header */}
@@ -32,12 +60,20 @@ export default function EPrescriptionPage() {
               <button className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors" onClick={() => window.print()}>
                 <span className="material-symbols-outlined">print</span>
               </button>
-              <button className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
-                <span className="material-symbols-outlined">download</span>
-              </button>
-              <button className="flex items-center gap-2 rounded-xl h-10 px-4 bg-primary text-white text-sm font-bold hover:opacity-90 transition-opacity">
-                <span className="material-symbols-outlined text-lg">share</span>
-                <span>Share</span>
+              <button
+                onClick={sendPrescriptionSMS}
+                disabled={smsStatus === "sending" || smsStatus === "sent"}
+                className={`flex items-center gap-2 rounded-xl h-10 px-4 text-sm font-bold transition-all disabled:opacity-70 ${smsStatus === "sent" ? "bg-green-600 text-white" :
+                  smsStatus === "error" ? "bg-red-500 text-white" :
+                    "bg-primary text-white hover:opacity-90"
+                  }`}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {smsStatus === "sending" ? "progress_activity" : smsStatus === "sent" ? "check_circle" : smsStatus === "error" ? "error" : "sms"}
+                </span>
+                <span>
+                  {smsStatus === "sending" ? "Sending..." : smsStatus === "sent" ? "SMS Sent!" : smsStatus === "error" ? "Failed – Retry" : "Send SMS"}
+                </span>
               </button>
             </div>
           </div>
@@ -161,17 +197,29 @@ export default function EPrescriptionPage() {
             {/* SMS Status */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 p-2 rounded-lg">
+                <div className={`p-2 rounded-lg ${smsStatus === "sent" ? "bg-green-100 text-green-600" : smsStatus === "error" ? "bg-red-100 text-red-500" : "bg-blue-100 dark:bg-blue-900/30 text-blue-600"}`}>
                   <span className="material-symbols-outlined">sms</span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Prescription sent to +91 98*** **420</p>
-                  <p className="text-xs text-slate-500">Sent at 11:45 AM today</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    {smsStatus === "sent" ? `Prescription SMS sent to ${PATIENT_PHONE}` :
+                      smsStatus === "sending" ? "Sending prescription SMS..." :
+                        smsStatus === "error" ? "SMS delivery failed" :
+                          "SMS not sent yet — click \"Send SMS\" above"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {smsStatus === "sent" ? `Sent at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "Twilio powered delivery"}
+                  </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-green-600 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">check_circle</span> Delivered
-              </span>
+              {smsStatus === "sent" && (
+                <span className="text-xs font-bold text-green-600 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">check_circle</span> Delivered
+                </span>
+              )}
+              {smsStatus === "idle" && (
+                <button onClick={sendPrescriptionSMS} className="text-xs font-bold text-primary hover:underline">Send Now</button>
+              )}
             </div>
           </div>
 
