@@ -254,24 +254,22 @@ export default function HealthRecordsPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {healthRecords.map((rec) => (
-                <div key={rec.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 flex gap-4 items-start hover:border-primary/30 transition-colors">
+                <Link
+                  key={rec.id}
+                  href={`/dashboard/patient/records/${rec.id}`}
+                  className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 flex gap-4 items-start hover:border-primary/40 hover:shadow-md transition-all group cursor-pointer"
+                >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${TYPE_COLORS[rec.type] ?? TYPE_COLORS.GENERAL}`}>
                     <span className="material-symbols-outlined text-lg">{TYPE_ICONS[rec.type] ?? "description"}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-800 dark:text-white text-sm truncate">{rec.title}</p>
+                    <p className="font-bold text-slate-800 dark:text-white text-sm truncate group-hover:text-primary transition-colors">{rec.title}</p>
                     {rec.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{rec.description}</p>}
                     {rec.doctorName && <p className="text-xs text-slate-400 mt-1">By {rec.doctorName}</p>}
                     <p className="text-[10px] text-slate-400 mt-1">{format(new Date(rec.createdAt), "dd MMM yyyy")}</p>
                   </div>
-                  {rec.fileUrl ? (
-                    <a href={rec.fileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-primary">
-                      <span className="material-symbols-outlined">download</span>
-                    </a>
-                  ) : (
-                    <span className="shrink-0 text-slate-300 text-xs font-medium">No file</span>
-                  )}
-                </div>
+                  <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors text-lg shrink-0">chevron_right</span>
+                </Link>
               ))}
             </div>
           </div>

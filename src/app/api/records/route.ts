@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/records?userId=...
+// GET /api/records?userId=... OR ?id=...
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
+    const id = searchParams.get("id");
+
+    // Single record lookup by id
+    if (id) {
+      const record = await prisma.healthRecord.findUnique({
+        where: { id },
+        include: {
+          patient: {
+            select: { id: true, name: true, village: true, bloodGroup: true, phone: true },
+          },
+        },
+      });
+      if (!record) return NextResponse.json({ error: "Record not found" }, { status: 404 });
+      return NextResponse.json(record);
+    }
 
     if (!userId) {
-      return NextResponse.json({ error: "userId is required" }, { status: 400 });
+      return NextResponse.json({ error: "userId or id is required" }, { status: 400 });
     }
 
     // Get patient profile

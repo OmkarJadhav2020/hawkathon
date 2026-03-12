@@ -1,83 +1,113 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// Redis client - configured in lib/redis.ts
-// For now using in-memory queue as placeholder until Redis is configured
-const inMemoryQueue: Record<string, unknown>[] = [];
-
-interface BatchRecord {
-  patientName: string;
-  phone?: string;
-  age?: number;
-  gender?: string;
-  village?: string;
-  vitals?: {
-    bp?: string;
-    sugar?: number;
-    temperature?: number;
-    weight?: number;
-  };
-  symptoms?: string[];
-  notes?: string;
-}
-
-interface BatchPayload {
-  ashaWorkerId: string;
-  campId: string;
-  campDate: string;
-  village: string;
-  records: BatchRecord[];
-}
-
+// POST /api/sync/asha-batch
+// Registers patients from an ASHA camp or direct registration
+// Body: { ashaWorkerId, campId, campDate, village, records: [{patientName, phone, gender, bloodGroup, dateOfBirth, vitals, symptoms, notes}] }
 export async function POST(request: NextRequest) {
   try {
-    const payload: BatchPayload = await request.json();
+    const payload = await request.json();
+    const { ashaWorkerId, campId, campDate, village, records } = payload;
 
-    if (!payload.ashaWorkerId || !payload.records?.length) {
-      return NextResponse.json({ error: "Invalid batch payload" }, { status: 400 });
+    if (!ashaWorkerId || !records?.length) {
+      return NextResponse.json({ error: "ashaWorkerId and records[] are required" }, { status: 400 });
     }
 
     const results = {
       accepted: 0,
       failed: 0,
       errors: [] as string[],
+      patients: [] as { id: string; name: string; isNew: boolean }[],
     };
 
-    // Process each record in the batch
-    for (const record of payload.records) {
+    for (const record of records) {
       try {
-        if (!record.patientName) {
+        if (!record.patientName?.trim()) {
           results.failed++;
-          results.errors.push(`Missing patient name in record`);
+          results.errors.push("Missing patient name");
           continue;
         }
 
-        // Queue the record for database write
-        const queueItem = {
-          id: `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: "ASHA_BATCH_REGISTRATION",
-          ashaWorkerId: payload.ashaWorkerId,
-          campId: payload.campId,
-          campDate: payload.campDate,
-          village: payload.village,
-          record,
-          queuedAt: new Date().toISOString(),
-          status: "PENDING",
-        };
+        // Upsert the patient user — phone is optional for ASHA registrations
+        let patientUser;
+        const phone = record.phone?.replace(/\D/g, "");
+        const normalizedPhone = phone ? (phone.startsWith("+91") ? phone : `+91${phone}`) : null;
 
-        // In production: await redis.lpush('asha_sync_queue', JSON.stringify(queueItem));
-        inMemoryQueue.push(queueItem);
+        if (normalizedPhone) {
+          // Try to find by phone first
+          patientUser = await prisma.user.upsert({
+            where: { phone: normalizedPhone },
+            update: {
+              // Update existing patient's info if they registered offline before
+              village: record.village ?? village ?? undefined,
+              gender: record.gender ?? undefined,
+              bloodGroup: record.bloodGroup ?? undefined,
+            },
+            create: {
+              phone: normalizedPhone,
+              name: record.patientName.trim(),
+              role: "PATIENT",
+              village: record.village ?? village ?? null,
+              gender: record.gender ?? null,
+              bloodGroup: record.bloodGroup ?? null,
+              dateOfBirth: record.dateOfBirth ? new Date(record.dateOfBirth) : null,
+              allergies: record.allergies ?? [],
+            },
+          });
+        } else {
+          // No phone — create with a unique placeholder (ASHA can register without phone)
+          patientUser = await prisma.user.create({
+            data: {
+              phone: `ASHA_${ashaWorkerId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              name: record.patientName.trim(),
+              role: "PATIENT",
+              village: record.village ?? village ?? null,
+              gender: record.gender ?? null,
+              bloodGroup: record.bloodGroup ?? null,
+              dateOfBirth: record.dateOfBirth ? new Date(record.dateOfBirth) : null,
+              allergies: record.allergies ?? [],
+            },
+          });
+        }
+
+        // Log to OfflineSyncQueue for audit trail
+        await prisma.offlineSyncQueue.create({
+          data: {
+            type: "REGISTRATION",
+            ashaWorkerId,
+            syncStatus: "SYNCED", // Directly synced since we wrote to DB
+            payload: {
+              campId: campId ?? "DIRECT",
+              campDate: campDate ?? new Date().toISOString(),
+              village: village ?? null,
+              patientId: patientUser.id,
+              record,
+            },
+          },
+        });
+
         results.accepted++;
-      } catch {
+        results.patients.push({ id: patientUser.id, name: patientUser.name, isNew: true });
+      } catch (err) {
+        console.error("Registration error for record:", record.patientName, err);
         results.failed++;
-        results.errors.push(`Failed to queue record for ${record.patientName}`);
+        results.errors.push(`Failed to register ${record.patientName}: ${err instanceof Error ? err.message : "unknown error"}`);
       }
     }
 
+    // Update ASHA worker's last sync time
+    await prisma.ashaWorkerProfile.updateMany({
+      where: { userId: ashaWorkerId },
+      data: { lastSyncAt: new Date(), isOnline: true },
+    });
+
     return NextResponse.json({
       success: true,
-      message: `Queued ${results.accepted} records for sync. ${results.failed} failed.`,
-      ...results,
-      queueSize: inMemoryQueue.length,
+      message: `Registered ${results.accepted} patient(s). ${results.failed > 0 ? `${results.failed} failed.` : ""}`,
+      accepted: results.accepted,
+      failed: results.failed,
+      errors: results.errors,
+      patients: results.patients,
     });
   } catch (error) {
     console.error("ASHA batch sync error:", error);
@@ -86,10 +116,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // Return queue status
-  return NextResponse.json({
-    queueSize: inMemoryQueue.length,
-    pendingRecords: inMemoryQueue.filter((r) => r.status === "PENDING").length,
-    lastChecked: new Date().toISOString(),
-  });
+  try {
+    const count = await prisma.offlineSyncQueue.count({ where: { syncStatus: "PENDING" } });
+    return NextResponse.json({ pendingRecords: count, lastChecked: new Date().toISOString() });
+  } catch {
+    return NextResponse.json({ pendingRecords: 0, lastChecked: new Date().toISOString() });
+  }
 }
