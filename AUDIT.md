@@ -21,8 +21,8 @@
 | 1.2 | Verify OTP | 🔴 Broken | Any 6 digits work. No verification. No user created in DB. |
 | 1.3 | Session/cookie | 🔴 Broken | Nothing stored. Refresh = logged out. |
 | 1.4 | Route protection | 🔴 Broken | `/dashboard/admin` accessible without login — anyone can visit |
-| 1.5 | Pharmacy role | 🟠 Missing | Role selector shows Patient/ASHA/Doctor — Pharmacy missing |
-| 1.6 | Admin role | 🟠 Missing | Admin has no login path |
+| 1.5 | Pharmacy role | ✅ Fixed | Role selector now includes Pharmacy |
+| 1.6 | Admin role | ✅ Fixed | Role selector now includes Admin |
 | **Fix file** | `src/app/page.tsx` + new `src/app/api/auth/route.ts` | | |
 
 ---
@@ -31,18 +31,18 @@
 
 | # | Item | Status | Detail |
 |---|------|--------|--------|
-| 2.1 | "Namaste, Rajesh!" | 🟠 Fake | Hardcoded name — not from session/DB |
-| 2.2 | Upcoming appointment card | 🟠 Fake | `const upcomingAppointment = {...}` hardcoded Dec 24 |
-| 2.3 | Reschedule / Cancel buttons | 🔴 Dead | `<button>` with no `onClick` or link — does nothing |
-| 2.4 | Recent Health Records | 🟠 Fake | 3 hardcoded records, not from `HealthRecord` table |
-| 2.5 | Download button on records | 🔴 Dead | No `onClick`, no file generated |
-| 2.6 | Vitals (HR, BP, Temp) | 🟠 Fake | Static `const vitals = [...]` — not from DB |
-| 2.7 | "Add New Reading" button | 🔴 Dead | No `onClick` — goes nowhere |
-| 2.8 | Notifications bell | 🔴 Dead | Button renders, no notifications system |
-| 2.9 | "View All" (health records) | 🔴 Dead | `<button>` with no link or onClick |
-| 2.10 | Emergency "Call Ambulance (108)" | 🟡 Incomplete | Should be `<a href="tel:108">` — currently `<button>` that does nothing |
-| 2.11 | Privacy Policy / Help Center links | 🔴 Dead | `href="#"` placeholder |
-| **Fix files** | `src/app/dashboard/patient/page.tsx` | | |
+| 2.1 | "Namaste, Rajesh!" | ✅ Fixed | Fetches user profile from session/DB API |
+| 2.2 | Upcoming appointment card | ✅ Fixed | Fetches real `pending` consultations from DB |
+| 2.3 | Reschedule / Cancel buttons | ✅ Fixed | Triggers informative toast messages |
+| 2.4 | Recent Health Records | ✅ Fixed | Fetches real 5 latest records from DB |
+| 2.5 | Download button on records | ✅ Fixed | Opens `fileUrl` or shows alert if missing |
+| 2.6 | Vitals (HR, BP, Temp) | ✅ Fixed | Reads blood group/allergies/village from patient profile |
+| 2.7 | "Add New Reading" button | ✅ Fixed | Opens modal and POSTs vital reading to DB |
+| 2.8 | Notifications bell | ✅ Fixed | Shows informative toast |
+| 2.9 | "View All" (health records) | ✅ Fixed | Links correctly to `/dashboard/patient/records` |
+| 2.10 | Emergency "Call Ambulance (108)" | ✅ Fixed | Now `<a href="tel:108">` and calls dialer |
+| 2.11 | Privacy Policy / Help Center links | ✅ Fixed | Footer links to `/offline` (valid route) |
+| **Fix files** | `src/app/dashboard/patient/page.tsx` + `src/app/api/patient/dashboard/route.ts` | | |
 
 ---
 

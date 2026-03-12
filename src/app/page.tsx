@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [role, setRole] = useState<"patient" | "asha" | "doctor">("patient");
+  const [role, setRole] = useState<"patient" | "asha" | "doctor" | "pharmacy" | "admin">("patient");
   const [loading, setLoading] = useState(false);
 
   const handleSendOTP = async () => {
@@ -36,6 +36,8 @@ export default function LoginPage() {
     setLoading(false);
     if (role === "doctor") router.push("/dashboard/doctor");
     else if (role === "asha") router.push("/dashboard/asha");
+    else if (role === "pharmacy") router.push("/dashboard/pharmacy");
+    else if (role === "admin") router.push("/dashboard/admin");
     else router.push("/dashboard/patient");
   };
 
@@ -61,11 +63,11 @@ export default function LoginPage() {
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Enter your registered mobile number</p>
 
               <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
-                {(["patient", "asha", "doctor"] as const).map((r) => (
+                {(["patient", "asha", "doctor", "pharmacy", "admin"] as const).map((r) => (
                   <button
                     key={r}
                     onClick={() => setRole(r)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold capitalize transition-all ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-bold capitalize transition-all ${
                       role === r ? "bg-white dark:bg-slate-700 text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >

@@ -1,34 +1,177 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const upcomingAppointment = {
-  month: "DEC",
-  day: "24",
-  title: "General Consultation",
-  doctor: "Dr. Amit Verma",
-  time: "10:30 AM",
-  clinic: "Sewa Rural Clinic, Block B",
+// ─── Types ────────────────────────────────────────────────────────────────────
+type HealthRecord = { id: string; type: string; title: string; date: string; fileUrl: string | null };
+type Appointment = { id: string; doctorName: string; specialty: string; scheduledAt: string; status: string; type: string; clinic: string };
+type PatientUser = { id: string; name: string; phone: string; bloodGroup?: string; allergies?: string[]; village?: string; gender?: string };
+type DashboardData = {
+  user: PatientUser;
+  healthRecords: HealthRecord[];
+  upcomingAppointments: Appointment[];
+  pastAppointments: { id: string; doctorName: string; reason: string; date: string; type: string; status: string }[];
 };
 
-const recentRecords = [
-  { icon: "lab_panel", color: "blue", title: "Blood Test Results", subtitle: "General Checkup • 12 Oct 2023" },
-  { icon: "prescriptions", color: "green", title: "Prescription: Fever", subtitle: "Dr. Sharma • 05 Oct 2023" },
-  { icon: "vaccines", color: "purple", title: "COVID-19 Vaccination", subtitle: "Dose 3 Certificate • 20 Sep 2023" },
-];
+// ─── Record type icon map ─────────────────────────────────────────────────────
+const recordIconMap: Record<string, { icon: string; color: string }> = {
+  LAB: { icon: "lab_panel", color: "blue" },
+  PRESCRIPTION: { icon: "prescriptions", color: "green" },
+  VACCINATION: { icon: "vaccines", color: "purple" },
+  VITAL: { icon: "monitor_heart", color: "red" },
+  DEFAULT: { icon: "description", color: "slate" },
+};
 
-const vitals = [
-  { icon: "favorite", color: "text-red-500", label: "Heart Rate", value: "72", unit: "bpm" },
-  { icon: "blood_pressure", color: "text-blue-500", label: "Blood Pressure", value: "120/80", unit: "mmHg" },
-  { icon: "device_thermostat", color: "text-orange-500", label: "Temperature", value: "98.6", unit: "°F" },
-];
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
 
+// ─── Add Vital Modal ──────────────────────────────────────────────────────────
+function AddVitalModal({ userId, onClose, onSaved }: { userId: string; onClose: () => void; onSaved: () => void }) {
+  const [type, setType] = useState("Heart Rate");
+  const [value, setValue] = useState("");
+  const [unit, setUnit] = useState("bpm");
+  const [saving, setSaving] = useState(false);
+
+  const vitalOptions = [
+    { label: "Heart Rate", unit: "bpm" },
+    { label: "Blood Pressure", unit: "mmHg" },
+    { label: "Temperature", unit: "°F" },
+    { label: "Blood Sugar", unit: "mg/dL" },
+    { label: "SpO2", unit: "%" },
+    { label: "Weight", unit: "kg" },
+  ];
+
+  const handleSave = async () => {
+    if (!value.trim()) return;
+    setSaving(true);
+    try {
+      await fetch("/api/patient/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, type, value, unit }),
+      });
+      onSaved();
+      onClose();
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add Vital Reading</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Vital Type</label>
+            <select
+              value={type}
+              onChange={(e) => {
+                const opt = vitalOptions.find((o) => o.label === e.target.value);
+                setType(e.target.value);
+                setUnit(opt?.unit ?? "");
+              }}
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {vitalOptions.map((o) => <option key={o.label}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Value ({unit})</label>
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={`Enter ${type} value`}
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600">Cancel</button>
+          <button onClick={handleSave} disabled={saving || !value.trim()} className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50">
+            {saving ? "Saving..." : "Save Reading"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function PatientDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
+  const [showVitalModal, setShowVitalModal] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // In production: get userId from session cookie
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
+
+  const fetchDashboard = async () => {
+    try {
+      const res = await fetch(`/api/patient/dashboard?userId=${userId}`);
+      const json = await res.json();
+      setData(json);
+    } catch {
+      // keep null — skeleton shown
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDashboard(); }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleReschedule = (id: string) => showToast(`Reschedule flow for appointment ${id} — call your clinic or use the Appointments page.`);
+  const handleCancel = (id: string) => showToast(`Cancellation request for ${id} noted. Feature coming soon — call 108 for urgent cancellations.`);
+  const handleDownload = (rec: HealthRecord) => {
+    if (rec.fileUrl) {
+      window.open(rec.fileUrl, "_blank");
+    } else {
+      showToast("No file attached to this record. Ask your doctor to upload the document.");
+    }
+  };
+
+  const user = data?.user;
+  const initials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??";
+  const upcomingApt = data?.upcomingAppointments?.[0];
+  const records = data?.healthRecords ?? [];
+
+  // Health tip cycles daily
+  const tips = [
+    "Drink at least 3 litres of water daily to stay hydrated.",
+    "Walk for 30 minutes every morning to improve heart health.",
+    "Eat one seasonal fruit daily — it boosts immunity naturally.",
+    "Sleep 7-8 hours — poor sleep raises blood pressure.",
+  ];
+  const todayTip = tips[new Date().getDay() % tips.length];
 
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-2xl max-w-sm text-center animate-in fade-in slide-in-from-top-2">
+          {toast}
+        </div>
+      )}
+
+      {/* Add Vital Modal */}
+      {showVitalModal && (
+        <AddVitalModal
+          userId={userId}
+          onClose={() => setShowVitalModal(false)}
+          onSaved={() => { fetchDashboard(); showToast("Vital reading saved! ✅"); }}
+        />
+      )}
+
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
         <div className="flex items-center gap-3 text-primary">
@@ -46,11 +189,13 @@ export default function PatientDashboard() {
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/records">Records</Link>
           </nav>
           <div className="flex gap-2">
-            <button className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all">
+            <button onClick={() => showToast("No new notifications.")} className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all">
               <span className="material-symbols-outlined">notifications</span>
             </button>
           </div>
-          <div className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">RJ</div>
+          <div className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
+            {loading ? "..." : initials}
+          </div>
         </div>
       </header>
 
@@ -58,14 +203,16 @@ export default function PatientDashboard() {
         {/* Welcome */}
         <div className="flex flex-wrap justify-between items-end gap-4 mb-8">
           <div>
-            <h1 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Namaste, Rajesh! 🙏</h1>
+            <h1 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
+              {loading ? "Loading..." : `Namaste, ${user?.name?.split(" ")[0] ?? "Patient"}! 🙏`}
+            </h1>
             <p className="text-slate-500 dark:text-slate-400 text-base mt-1">Your health is our priority today.</p>
           </div>
           <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-4 max-w-sm">
             <span className="material-symbols-outlined text-primary text-2xl">lightbulb</span>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-primary">Health Tip</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300">Drink at least 3 liters of water today to stay hydrated.</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{todayTip}</p>
             </div>
           </div>
         </div>
@@ -102,27 +249,42 @@ export default function PatientDashboard() {
             <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <h3 className="text-slate-900 dark:text-white font-bold">Recent Health Records</h3>
-                <button className="text-primary text-sm font-semibold hover:underline">View All</button>
+                <Link href="/dashboard/patient/records" className="text-primary text-sm font-semibold hover:underline">View All</Link>
               </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {recentRecords.map((rec) => (
-                  <div key={rec.title} className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`size-10 rounded-lg bg-${rec.color}-100 text-${rec.color}-600 flex items-center justify-center`}>
-                        <span className="material-symbols-outlined">{rec.icon}</span>
+              {loading ? (
+                <div className="p-8 text-center text-slate-400 text-sm">Loading records...</div>
+              ) : records.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  <span className="material-symbols-outlined text-4xl block mb-2">folder_open</span>
+                  <p className="text-sm">No health records yet. Visit a doctor to get started.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {records.map((rec) => {
+                    const iconInfo = recordIconMap[rec.type] ?? recordIconMap.DEFAULT;
+                    return (
+                      <div key={rec.id} className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className={`size-10 rounded-lg bg-${iconInfo.color}-100 text-${iconInfo.color}-600 flex items-center justify-center`}>
+                            <span className="material-symbols-outlined">{iconInfo.icon}</span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">{rec.title}</p>
+                            <p className="text-xs text-slate-500">{formatDate(rec.date)}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDownload(rec)}
+                          className="flex items-center gap-1 text-slate-400 hover:text-primary transition-colors"
+                        >
+                          <span className="material-symbols-outlined">{rec.fileUrl ? "download" : "info"}</span>
+                          <span className="text-sm hidden sm:inline">{rec.fileUrl ? "Download" : "No file"}</span>
+                        </button>
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{rec.title}</p>
-                        <p className="text-xs text-slate-500">{rec.subtitle}</p>
-                      </div>
-                    </div>
-                    <button className="flex items-center gap-1 text-slate-400 hover:text-primary transition-colors">
-                      <span className="material-symbols-outlined">download</span>
-                      <span className="text-sm hidden sm:inline">Download</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </div>
 
@@ -135,40 +297,85 @@ export default function PatientDashboard() {
               </div>
               <div className="relative z-10">
                 <h3 className="font-bold text-lg mb-4">Upcoming Appointment</h3>
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="bg-white/20 p-3 rounded-lg flex flex-col items-center min-w-[60px]">
-                    <span className="text-xs font-bold uppercase">{upcomingAppointment.month}</span>
-                    <span className="text-2xl font-black">{upcomingAppointment.day}</span>
+                {loading ? (
+                  <p className="text-white/70 text-sm">Loading...</p>
+                ) : upcomingApt ? (
+                  <>
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="bg-white/20 p-3 rounded-lg flex flex-col items-center min-w-[60px]">
+                        <span className="text-xs font-bold uppercase">
+                          {new Date(upcomingApt.scheduledAt).toLocaleString("en-IN", { month: "short" }).toUpperCase()}
+                        </span>
+                        <span className="text-2xl font-black">
+                          {new Date(upcomingApt.scheduledAt).getDate()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg leading-tight">{upcomingApt.specialty} Consultation</p>
+                        <p className="text-white/80 text-sm">{upcomingApt.doctorName} • {new Date(upcomingApt.scheduledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+                        <p className="text-white/70 text-xs mt-1">{upcomingApt.clinic}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleReschedule(upcomingApt.id)}
+                        className="flex-1 bg-white text-primary font-bold py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleCancel(upcomingApt.id)}
+                        className="flex-1 bg-white/10 border border-white/30 text-white font-bold py-2 rounded-lg text-sm hover:bg-white/20 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-white/70 text-sm mb-3">No upcoming appointments.</p>
+                    <Link href="/dashboard/patient/appointments" className="bg-white text-primary font-bold px-4 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors">
+                      Book Now
+                    </Link>
                   </div>
-                  <div>
-                    <p className="font-bold text-lg leading-tight">{upcomingAppointment.title}</p>
-                    <p className="text-white/80 text-sm">{upcomingAppointment.doctor} • {upcomingAppointment.time}</p>
-                    <p className="text-white/70 text-xs mt-1">{upcomingAppointment.clinic}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button className="flex-1 bg-white text-primary font-bold py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors">Reschedule</button>
-                  <button className="flex-1 bg-white/10 border border-white/30 text-white font-bold py-2 rounded-lg text-sm hover:bg-white/20 transition-colors">Cancel</button>
-                </div>
+                )}
               </div>
             </section>
 
-            {/* Vitals */}
+            {/* Vitals — patient info from DB */}
             <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-              <h3 className="text-slate-900 dark:text-white font-bold mb-4">Your Recent Vitals</h3>
-              <div className="flex flex-col gap-4">
-                {vitals.map((v) => (
-                  <div key={v.label} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-3">
-                      <span className={`material-symbols-outlined ${v.color}`}>{v.icon}</span>
-                      <span className="text-sm font-medium">{v.label}</span>
+              <h3 className="text-slate-900 dark:text-white font-bold mb-4">Patient Info</h3>
+              {loading ? (
+                <p className="text-sm text-slate-400">Loading...</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {[
+                    { icon: "bloodtype", color: "text-red-500", label: "Blood Group", value: user?.bloodGroup ?? "Unknown" },
+                    { icon: "person", color: "text-blue-500", label: "Gender", value: user?.gender ?? "Unknown" },
+                    { icon: "location_on", color: "text-green-500", label: "Village", value: user?.village ?? "Unknown" },
+                    { icon: "phone", color: "text-primary", label: "Phone", value: user?.phone ?? "Unknown" },
+                  ].map((v) => (
+                    <div key={v.label} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                      <div className="flex items-center gap-3">
+                        <span className={`material-symbols-outlined ${v.color}`}>{v.icon}</span>
+                        <span className="text-sm font-medium">{v.label}</span>
+                      </div>
+                      <span className="font-bold text-sm">{v.value}</span>
                     </div>
-                    <span className="font-bold">{v.value} <span className="text-xs font-normal text-slate-500">{v.unit}</span></span>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-4 text-primary text-sm font-bold flex items-center justify-center gap-1 hover:bg-primary/5 py-2 rounded-lg transition-colors">
-                Add New Reading <span className="material-symbols-outlined text-sm">add</span>
+                  ))}
+                  {(user?.allergies?.length ?? 0) > 0 && (
+                    <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30">
+                      <p className="text-xs font-bold text-red-600 uppercase mb-1">⚠ Allergies</p>
+                      <p className="text-sm text-red-700 dark:text-red-300">{user?.allergies?.join(", ")}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={() => setShowVitalModal(true)}
+                className="w-full mt-4 text-primary text-sm font-bold flex items-center justify-center gap-1 hover:bg-primary/5 py-2 rounded-lg transition-colors"
+              >
+                Add Vital Reading <span className="material-symbols-outlined text-sm">add</span>
               </button>
             </section>
 
@@ -179,9 +386,13 @@ export default function PatientDashboard() {
                 <h3 className="text-red-900 dark:text-red-400 font-bold">Emergency Support</h3>
               </div>
               <p className="text-red-700 dark:text-red-300 text-sm mb-4">Instantly connect with an ambulance or on-duty medical staff.</p>
-              <button className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2">
+              {/* FIXED: was dead <button>, now real tel: link */}
+              <a
+                href="tel:108"
+                className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2"
+              >
                 <span className="material-symbols-outlined">call</span> Call Ambulance (108)
-              </button>
+              </a>
             </section>
           </div>
         </div>
@@ -215,8 +426,9 @@ export default function PatientDashboard() {
             <span className="font-bold text-slate-800 dark:text-white">GraamSehat Rural Health Portal</span>
           </div>
           <div className="flex gap-8 text-sm text-slate-500 dark:text-slate-400">
-            <a className="hover:text-primary" href="#">Privacy Policy</a>
-            <a className="hover:text-primary" href="#">Help Center</a>
+            <Link href="/offline" className="hover:text-primary">Privacy Policy</Link>
+            <a href="tel:108" className="hover:text-primary">Emergency: 108</a>
+            <Link href="/offline" className="hover:text-primary">Offline Mode</Link>
           </div>
           <div className="text-sm text-slate-400">© 2024 GraamSehat.</div>
         </div>

@@ -1,0 +1,68 @@
+﻿node.exe : C:\Users\jadha\backend_final\g
+raamsehat-app\node_modules\@prisma\client
+\src\runtime\getPrismaClient.ts:320
+At C:\Program Files\nodejs\npx.ps1:29 
+char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifi 
+   ed: (C:\Users\jadha\...maClient.ts:3  
+  20:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComm 
+   andError
+ 
+        throw new 
+PrismaClientInitializationError(
+              ^
+
+
+PrismaClientInitializationError: 
+`PrismaClient` needs to be constructed 
+with a non-empty, valid 
+`PrismaClientOptions`:
+
+```
+new PrismaClient({
+  ...
+})
+```
+
+or
+
+```
+constructor() {
+  super({ ... });
+}
+```
+          
+    at new t (C:\Users\jadha\backend_fina
+l\graamsehat-app\node_modules\@prisma\cli
+ent\src\runtime\getPrismaClient.ts:320:15
+)
+    at <anonymous> (C:\Users\jadha\backen
+d_final\graamsehat-app\prisma\seed.ts:13:
+16)
+    at Object.<anonymous> (C:\Users\jadha
+\backend_final\graamsehat-app\prisma\seed
+.ts:274:38)
+    at Module._compile (node:internal/mod
+ules/cjs/loader:1730:14)
+    at Object.transformer (C:\Users\jadha
+\backend_final\graamsehat-app\node_module
+s\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules
+/cjs/loader:1465:32)
+    at Function._load (node:internal/modu
+les/cjs/loader:1282:12)
+    at TracingChannel.traceSync 
+(node:diagnostics_channel:322:14)
+    at wrapModuleLoad 
+(node:internal/modules/cjs/loader:235:24)
+    at cjsLoader (node:internal/modules/e
+sm/translators:266:5) {
+  clientVersion: '7.5.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+
+Node.js v22.16.0
