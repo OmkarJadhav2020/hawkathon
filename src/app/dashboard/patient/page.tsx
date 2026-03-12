@@ -14,6 +14,36 @@ type DashboardData = {
   pastAppointments: { id: string; doctorName: string; reason: string; date: string; type: string; status: string }[];
 };
 
+// ─── Active Consultation Hook ─────────────────────────────────────────────────
+function useActiveConsultation(userId: string) {
+  const [activeConsult, setActiveConsult] = useState<Appointment | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const checkActive = async () => {
+      try {
+        const res = await fetch(`/api/appointments?userId=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Find any appointment that is exactly IN_PROGRESS right now
+        const inProgress = (data.upcoming || []).find((a: any) => a.status === "IN_PROGRESS");
+        setActiveConsult(inProgress || null);
+      } catch {
+        // silently ignore polling errors
+      }
+    };
+
+    checkActive(); // check immediately
+    const interval = setInterval(checkActive, 10000); // poll every 10s
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  return activeConsult;
+}
+
+
 // ─── Record type icon map ─────────────────────────────────────────────────────
 const recordIconMap: Record<string, { icon: string; color: string }> = {
   LAB: { icon: "lab_panel", color: "blue" },
@@ -111,6 +141,9 @@ export default function PatientDashboard() {
   // In production: get userId from session cookie
   const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
 
+  const activeConsultCard = useActiveConsultation(userId);
+
+
   const fetchDashboard = async () => {
     try {
       const res = await fetch(`/api/patient/dashboard?userId=${userId}`);
@@ -142,8 +175,13 @@ export default function PatientDashboard() {
 
   const user = data?.user;
   const initials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??";
-  const upcomingApt = data?.upcomingAppointments?.[0];
   const records = data?.healthRecords ?? [];
+
+  // Exclude COMPLETED items from the upcoming preview card, and also exclude the active one if we are already showing it in the banner
+  const upcomingApt = data?.upcomingAppointments?.find(
+    (a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id)
+  );
+
 
   // Health tip cycles daily
   const tips = [
@@ -216,6 +254,32 @@ export default function PatientDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Incoming Call / Active Consultation Banner */}
+        {activeConsultCard && (
+          <div className="mb-6 bg-gradient-to-r from-green-600 to-green-500 rounded-2xl p-6 shadow-xl text-white flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 fade-in duration-500">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="relative">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center -rotate-12">
+                  <span className="material-symbols-outlined text-4xl text-white">ring_volume</span>
+                </div>
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full animate-ping" />
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold tracking-tight">Doctor is Ready!</h3>
+                <p className="text-green-100 text-sm">{activeConsultCard.doctorName} has started your {activeConsultCard.specialty} consultation.</p>
+              </div>
+            </div>
+            
+            <Link
+              href={`/dashboard/patient/consultation?id=${activeConsultCard.id}`}
+              className="w-full sm:w-auto bg-white text-green-700 font-black px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl">videocam</span> JOIN VIDEO CALL
+            </Link>
+          </div>
+        )}
 
         {/* Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

@@ -163,7 +163,8 @@ export default function DoctorDashboard() {
   const inProgress = consultations.find((c) => c.status === "IN_PROGRESS");
   const completed = consultations.filter((c) => c.status === "COMPLETED").slice(0, 5);
 
-  const displayList = search.trim() ? searchResults : [...(inProgress ? [inProgress] : []), ...pending];
+  // The main list should strictly be PENDING items if no search is active
+  const displayList = search.trim() ? searchResults : pending;
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark">
@@ -267,7 +268,7 @@ export default function DoctorDashboard() {
                 )}
 
                 {/* Pending / Search Queue */}
-                {displayList.filter((c) => c.status !== "IN_PROGRESS" || !!search).map((c) => (
+                {displayList.map((c) => (
                   <div
                     key={c.id}
                     onClick={() => { setActiveConsult(c); setNotes(c.notes ?? ""); setSearch(""); setSearchResults([]); }}
@@ -281,8 +282,8 @@ export default function DoctorDashboard() {
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{c.patient.name}</p>
                         <p className="text-xs text-slate-500">{c.symptoms?.slice(0, 2).join(", ") || "No symptoms noted"}</p>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === "IN_PROGRESS" ? "bg-green-50 text-green-600" : c.status === "COMPLETED" ? "bg-slate-100 text-slate-500" : "bg-amber-50 text-amber-600"}`}>
-                        {c.status.replace("_", " ")}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === "IN_PROGRESS" ? "bg-green-50 text-green-600" : c.status === "COMPLETED" ? "bg-slate-100 text-slate-500" : "bg-primary/10 text-primary"}`}>
+                        {c.status === "PENDING" ? "WAITING" : c.status.replace("_", " ")}
                       </span>
                     </div>
                   </div>
@@ -407,9 +408,17 @@ export default function DoctorDashboard() {
                           </button>
                         )}
                         {activeConsult.status === "IN_PROGRESS" && (
-                          <button onClick={handleEndConsultation} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm">
-                            End Consultation <span className="material-symbols-outlined text-sm">check_circle</span>
-                          </button>
+                          <div className="flex gap-3">
+                            <Link
+                              href={`/dashboard/patient/consultation?id=${activeConsult.id}`}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm"
+                            >
+                              Join Video Call <span className="material-symbols-outlined text-sm">videocam</span>
+                            </Link>
+                            <button onClick={handleEndConsultation} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm">
+                              End Consultation <span className="material-symbols-outlined text-sm">check_circle</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}

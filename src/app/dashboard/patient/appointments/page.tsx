@@ -21,6 +21,34 @@ type Consultation = {
   doctor: Doctor;
 };
 
+// ─── Active Consultation Hook ─────────────────────────────────────────────────
+function useActiveConsultation(userId: string) {
+  const [activeConsult, setActiveConsult] = useState<any>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const checkActive = async () => {
+      try {
+        const res = await fetch(`/api/appointments?userId=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const inProgress = (data.upcoming || []).find((a: any) => a.status === "IN_PROGRESS");
+        setActiveConsult(inProgress || null);
+      } catch {
+        // silently ignore polling errors
+      }
+    };
+
+    checkActive(); // check immediately
+    const interval = setInterval(checkActive, 10000); // poll every 10s
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  return activeConsult;
+}
+
 export default function AppointmentsPage() {
   const [tab, setTab] = useState<"upcoming" | "past" | "book">("upcoming");
   const [upcoming, setUpcoming] = useState<Consultation[]>([]);
@@ -31,6 +59,8 @@ export default function AppointmentsPage() {
 
   // In production: get userId from session cookie
   const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
+
+  const activeConsultCard = useActiveConsultation(userId);
 
   const fetchAppointments = async () => {
     try {
@@ -115,6 +145,32 @@ export default function AppointmentsPage() {
           </button>
         </div>
 
+        {/* Incoming Call / Active Consultation Banner */}
+        {activeConsultCard && (
+          <div className="mb-6 bg-gradient-to-r from-green-600 to-green-500 rounded-2xl p-6 shadow-xl text-white flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 fade-in duration-500">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="relative">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center -rotate-12">
+                  <span className="material-symbols-outlined text-4xl text-white">ring_volume</span>
+                </div>
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full animate-ping" />
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold tracking-tight">Doctor is Ready!</h3>
+                <p className="text-green-100 text-sm">{activeConsultCard.doctor?.name} is waiting for you in the consultation room.</p>
+              </div>
+            </div>
+            
+            <Link
+              href={`/dashboard/patient/consultation?id=${activeConsultCard.id}`}
+              className="w-full sm:w-auto bg-white text-green-700 font-black px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl">videocam</span> JOIN VIDEO CALL
+            </Link>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
           {(["upcoming", "past", "book"] as const).map((t) => (
@@ -137,14 +193,17 @@ export default function AppointmentsPage() {
             {/* Upcoming */}
             {tab === "upcoming" && (
               <div className="space-y-4">
-                {upcoming.length === 0 ? (
+                {upcoming.filter((a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id)).length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
                     <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
                     <p className="text-slate-500">No upcoming appointments</p>
                     <button onClick={() => setTab("book")} className="mt-4 text-primary font-bold text-sm hover:underline">Book one now</button>
                   </div>
                 ) : (
-                  upcoming.map((apt) => {
+                  upcoming
+                    .filter((a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id))
+                    .map((apt) => {
                     const d = new Date(apt.scheduledAt);
                     return (
                       <div key={apt.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 flex gap-6 items-start">

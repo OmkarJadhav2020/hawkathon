@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+
 
 type AshaProfile = {
   id: string;
@@ -30,6 +32,8 @@ type SyncItem = {
   createdAt: string;
 };
 
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
+
 export default function AshaWorkerDashboard() {
   const [activeNav, setActiveNav] = useState("dashboard");
   const [profile, setProfile] = useState<AshaProfile | null>(null);
@@ -37,39 +41,249 @@ export default function AshaWorkerDashboard() {
   const [syncQueue, setSyncQueue] = useState<SyncItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
-  // In production: from session. This is the ASHA user ID from the seed.
-  const ashaId = typeof window !== "undefined" ? localStorage.getItem("ashaId") ?? "cmmnpw2cg0004f770h6cnyckp" : "cmmnpw2cg0004f770h6cnyckp";
+  // Registration modal state
+  const [showRegModal, setShowRegModal] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regForm, setRegForm] = useState({
+    name: "", phone: "", village: "", gender: "", bloodGroup: "", dateOfBirth: "",
+  });
+  const [regError, setRegError] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`/api/asha?ashaId=${ashaId}`);
-        if (!res.ok) throw new Error("API error");
-        const data = await res.json();
-        setProfile(data.profile);
-        setPatients(data.patients ?? []);
-        setSyncQueue(data.syncQueue ?? []);
-      } catch {
-        console.error("Failed to fetch ASHA data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const ashaId = typeof window !== "undefined"
+    ? localStorage.getItem("userId") ?? localStorage.getItem("ashaId") ?? ""
+    : "";
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
+  };
+
+
+  const fetchData = useCallback(async () => {
+    if (!ashaId) { setLoading(false); return; }
+    try {
+      const res = await fetch(`/api/asha?ashaId=${ashaId}`);
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      setProfile(data.profile);
+      setPatients(data.patients ?? []);
+      setSyncQueue(data.syncQueue ?? []);
+    } catch {
+      console.error("Failed to fetch ASHA data");
+    } finally {
+      setLoading(false);
+    }
   }, [ashaId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ─── Registration ────────────────────────────────────────────────
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError("");
+    if (!regForm.name.trim()) { setRegError("Patient name is required."); return; }
+
+    setRegLoading(true);
+    try {
+      const res = await fetch("/api/sync/asha-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ashaWorkerId: ashaId,
+          campId: "DIRECT",
+          campDate: new Date().toISOString(),
+          village: regForm.village || profile?.villages[0] || "",
+          records: [{
+            patientName: regForm.name.trim(),
+            phone: regForm.phone.trim() || undefined,
+            gender: regForm.gender || undefined,
+            bloodGroup: regForm.bloodGroup || undefined,
+            dateOfBirth: regForm.dateOfBirth || undefined,
+          }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error ?? "Registration failed");
+
+      setShowRegModal(false);
+      setRegForm({ name: "", phone: "", village: "", gender: "", bloodGroup: "", dateOfBirth: "" });
+      showToast(`✅ ${data.patients?.[0]?.name ?? regForm.name} registered successfully!`);
+      await fetchData(); // Refresh patient list
+    } catch (err) {
+      setRegError(err instanceof Error ? err.message : "Registration failed. Try again.");
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
+  // ─── Sync Now ────────────────────────────────────────────────────
+  const handleSync = async () => {
+    if (!ashaId) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/asha/sync?ashaId=${ashaId}`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`☁️ ${data.message}`);
+        await fetchData();
+      } else {
+        showToast("Sync failed. Check your connection.");
+      }
+    } catch {
+      showToast("Network error during sync.");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background-light dark:bg-background-dark">
+      {/* Toast */}
       {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-2xl z-50 flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
-          <span className="font-medium text-sm">{toast}</span>
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-2xl z-50 flex items-center gap-2 max-w-sm text-center text-sm font-medium">
+          {toast}
+        </div>
+      )}
+
+      {/* Registration Modal */}
+      {showRegModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Register New Patient</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Data saved directly to GraamSehat DB</p>
+              </div>
+              <button onClick={() => { setShowRegModal(false); setRegError(""); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                <span className="material-symbols-outlined text-slate-500">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleRegister} className="p-6 space-y-4">
+              {regError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  {regError}
+                </div>
+              )}
+
+              {/* Patient Name */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Patient Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={regForm.name}
+                  onChange={(e) => setRegForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-asha/20 focus:border-asha"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Phone */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Phone</label>
+                  <input
+                    type="tel"
+                    value={regForm.phone}
+                    onChange={(e) => setRegForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))}
+                    placeholder="10 digits"
+                    maxLength={10}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-asha/20 focus:border-asha"
+                  />
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Gender</label>
+                  <select
+                    value={regForm.gender}
+                    onChange={(e) => setRegForm((f) => ({ ...f, gender: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none"
+                  >
+                    <option value="">—</option>
+                    <option>Female</option>
+                    <option>Male</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Village */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Village</label>
+                  <select
+                    value={regForm.village}
+                    onChange={(e) => setRegForm((f) => ({ ...f, village: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none"
+                  >
+                    <option value="">Select village</option>
+                    {(profile?.villages ?? []).map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Blood Group */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Blood Group</label>
+                  <select
+                    value={regForm.bloodGroup}
+                    onChange={(e) => setRegForm((f) => ({ ...f, bloodGroup: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none"
+                  >
+                    <option value="">Unknown</option>
+                    {BLOOD_GROUPS.filter((g) => g !== "Unknown").map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Date of Birth</label>
+                <input
+                  type="date"
+                  value={regForm.dateOfBirth}
+                  onChange={(e) => setRegForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+                  max={new Date().toISOString().split("T")[0]}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowRegModal(false); setRegError(""); }}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={regLoading || !regForm.name.trim()}
+                  className="flex-1 py-3 rounded-xl bg-asha hover:opacity-90 text-white font-bold text-sm shadow-lg shadow-asha/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {regLoading
+                    ? <><span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> Saving...</>
+                    : <><span className="material-symbols-outlined text-sm">person_add</span> Register Patient</>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -117,27 +331,35 @@ export default function AshaWorkerDashboard() {
             ))}
           </div>
 
-          <div className="mt-auto px-6 py-4">
-            <div className="hidden md:block">
+          <div className="mt-auto px-4 pb-4 space-y-3">
+            <div className="hidden md:block px-2">
               <div className="flex justify-between items-end mb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sync Queue</span>
                 <span className="text-xs font-black text-asha">{syncQueue.length} pending</span>
               </div>
               <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-asha transition-all" style={{ width: syncQueue.length === 0 ? "100%" : "60%" }} />
+                <div className="h-full bg-asha transition-all" style={{ width: syncQueue.length === 0 ? "100%" : "40%" }} />
               </div>
               <p className="text-[10px] mt-2 text-slate-400">
-                {profile?.lastSync ? `Last sync: ${profile.lastSync ? new Date(profile.lastSync).toLocaleDateString() : "Never"}` : "Never synced"}
+                {profile?.lastSync ? `Last sync: ${new Date(profile.lastSync).toLocaleDateString("en-IN")}` : "Never synced"}
               </p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-bold"
+            >
+              <span className="material-symbols-outlined text-lg">logout</span>
+              <span className="hidden md:inline">Logout</span>
+            </button>
           </div>
+
         </nav>
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto p-6 bg-background-light dark:bg-background-dark">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-asha"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-asha" />
             </div>
           ) : (
             <>
@@ -153,11 +375,19 @@ export default function AshaWorkerDashboard() {
                 </div>
                 {activeNav === "dashboard" && (
                   <div className="flex gap-3">
-                    <button onClick={() => showToast("Opening new patient registration form...")} className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold shadow-md active:scale-95 transition-transform">
+                    <button
+                      onClick={() => setShowRegModal(true)}
+                      className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
+                    >
                       <span className="material-symbols-outlined">add_circle</span> New Registration
                     </button>
-                    <button onClick={() => showToast("Syncing to GraamSehat servers...")} className="flex items-center gap-2 px-6 py-3 bg-asha text-white rounded-xl font-bold shadow-lg shadow-asha/30 active:scale-95 transition-transform">
-                      <span className="material-symbols-outlined">sync</span> Sync Now
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="flex items-center gap-2 px-6 py-3 bg-asha text-white rounded-xl font-bold shadow-lg shadow-asha/30 active:scale-95 transition-transform disabled:opacity-70"
+                    >
+                      <span className={`material-symbols-outlined ${syncing ? "animate-spin" : ""}`}>sync</span>
+                      {syncing ? "Syncing..." : "Sync Now"}
                     </button>
                   </div>
                 )}
@@ -170,7 +400,7 @@ export default function AshaWorkerDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {[
                       { label: "Registered Patients", value: patients.length.toString(), suffix: "In your villages" },
-                      { label: "Pending Sync", value: syncQueue.length.toString(), suffix: "Offline records", suffixColor: "text-amber-500" },
+                      { label: "Pending Sync", value: syncQueue.length.toString(), suffix: "Offline records", suffixColor: syncQueue.length > 0 ? "text-amber-500" : "text-green-500" },
                       { label: "Total Camps", value: profile?.totalCamps?.toString() ?? "0", suffix: "Organized" },
                     ].map((stat) => (
                       <div key={stat.label} className="bg-white dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -187,6 +417,7 @@ export default function AshaWorkerDashboard() {
                   <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-8">
                     <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
                       <h3 className="font-bold text-slate-900 dark:text-white">Registered Villagers</h3>
+                      <span className="text-xs text-slate-400">{patients.length} patients</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
@@ -201,7 +432,9 @@ export default function AshaWorkerDashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                           {patients.length === 0 ? (
-                            <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400 text-sm">No patients registered in your villages yet.</td></tr>
+                            <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400 text-sm">
+                              No patients registered in your villages yet. Click &quot;New Registration&quot; to add one.
+                            </td></tr>
                           ) : (
                             patients.map((p) => (
                               <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -224,7 +457,10 @@ export default function AshaWorkerDashboard() {
                                   ) : <span className="text-xs text-slate-400">None</span>}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                  <button onClick={() => showToast(`Booking proxy appointment for ${p.name}...`)} className="px-4 py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-xs font-bold transition-all">
+                                  <button
+                                    onClick={() => showToast(`Booking proxy appointment for ${p.name}...`)}
+                                    className="px-4 py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-xs font-bold transition-all"
+                                  >
                                     Proxy Book
                                   </button>
                                 </td>
@@ -240,35 +476,54 @@ export default function AshaWorkerDashboard() {
 
               {/* Sync Queue View */}
               {activeNav === "sync" && (
-                <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                    <h3 className="font-bold text-slate-900 dark:text-white">Pending Offline Sync ({syncQueue.length} items)</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-500 text-sm">{syncQueue.length === 0 ? "All records synced!" : `${syncQueue.length} item(s) pending sync`}</p>
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing || syncQueue.length === 0}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-asha text-white rounded-xl font-bold text-sm shadow disabled:opacity-50 transition-all"
+                    >
+                      <span className={`material-symbols-outlined text-sm ${syncing ? "animate-spin" : ""}`}>sync</span>
+                      {syncing ? "Syncing..." : "Sync All"}
+                    </button>
                   </div>
-                  {syncQueue.length === 0 ? (
-                    <div className="py-12 text-center">
-                      <span className="material-symbols-outlined text-4xl text-green-500 mb-3 block">cloud_done</span>
-                      <p className="text-slate-500 text-sm">All records have been synced!</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                      {syncQueue.map((item) => (
-                        <div key={item.id} className="p-4 flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{item.type}</p>
-                            <p className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleString()}</p>
+                  <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    {syncQueue.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <span className="material-symbols-outlined text-4xl text-green-500 mb-3 block">cloud_done</span>
+                        <p className="text-slate-500 text-sm">All records have been synced to GraamSehat!</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {profile?.lastSync ? `Last sync: ${new Date(profile.lastSync).toLocaleString("en-IN")}` : ""}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {syncQueue.map((item) => (
+                          <div key={item.id} className="p-4 flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-slate-200">{item.type}</p>
+                              <p className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleString("en-IN")}</p>
+                            </div>
+                            <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg">PENDING</span>
                           </div>
-                          <button onClick={() => showToast("Item synced to server!")} className="text-xs font-bold text-asha border border-asha/20 hover:bg-asha/5 px-3 py-1.5 rounded-lg transition-all">Sync Now</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Patients View */}
               {activeNav === "patients" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {patients.map((p) => (
+                  {patients.length === 0 ? (
+                    <div className="col-span-3 py-20 text-center text-slate-400">
+                      <span className="material-symbols-outlined text-5xl mb-3 block">person_search</span>
+                      <p>No patients in your villages yet.</p>
+                      <button onClick={() => { setActiveNav("dashboard"); setShowRegModal(true); }} className="mt-4 px-5 py-2 bg-asha text-white rounded-xl text-sm font-bold">Register first patient</button>
+                    </div>
+                  ) : patients.map((p) => (
                     <div key={p.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="size-12 rounded-full bg-asha/10 text-asha flex items-center justify-center font-bold text-lg">{p.name.slice(0, 2).toUpperCase()}</div>
