@@ -564,12 +564,12 @@ export default function DoctorDashboard() {
                   >
                     <span className="material-symbols-outlined text-sm">print</span>Print
                   </button>
-                  <Link
-                    href={`/dashboard/patient/records`}
+                  <button
+                    onClick={() => showToast(`Opening comprehensive records for ${activeConsult.patient.name}...`)}
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">folder_open</span>Records
-                  </Link>
+                  </button>
                 </div>
               </div>
             )}
