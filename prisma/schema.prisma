@@ -1,0 +1,201 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== ENUMS =====
+enum Role {
+  PATIENT
+  ASHA
+  DOCTOR
+  PHARMACY
+  ADMIN
+}
+
+enum ConsultationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TriageCategory {
+  HOME_CARE
+  TELECONSULT
+  EMERGENCY
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
+// ===== MODELS =====
+
+model User {
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String
+  role          Role     @default(PATIENT)
+  aadhaarHash   String?  // Hashed, never plain text
+  village       String?
+  district      String?
+  dateOfBirth   DateTime?
+  gender        String?
+  bloodGroup    String?
+  allergies     String[] @default([])
+  photoUrl      String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  consultationsAsPatient Consultation[] @relation("PatientConsultations")
+  consultationsAsDoctor  Consultation[] @relation("DoctorConsultations")
+  healthRecords  HealthRecord[]
+  prescriptions  Prescription[]
+  ashaWorker     AshaWorkerProfile?
+  doctorProfile  DoctorProfile?
+  pharmacy       PharmacyProfile?
+
+  @@map("users")
+}
+
+model AshaWorkerProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id])
+  villagesAssigned String[]
+  district    String
+  totalCamps  Int     @default(0)
+  isOnline    Boolean @default(false)
+  lastSyncAt  DateTime?
+
+  @@map("asha_worker_profiles")
+}
+
+model DoctorProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id])
+  specialization String
+  registrationNo String  @unique
+  isAvailable    Boolean @default(true)
+  rating         Float   @default(0)
+  totalRatings   Int     @default(0)
+
+  @@map("doctor_profiles")
+}
+
+model PharmacyProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id])
+  name     String
+  address  String
+  lat      Float?
+  lng      Float?
+  isOpen   Boolean @default(true)
+  phone    String?
+  medicines PharmacyStock[]
+
+  @@map("pharmacy_profiles")
+}
+
+model Consultation {
+  id             String             @id @default(cuid())
+  patientId      String
+  patient        User               @relation("PatientConsultations", fields: [patientId], references: [id])
+  doctorId       String?
+  doctor         User?              @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  status         ConsultationStatus @default(PENDING)
+  symptoms       String[]
+  triageCategory TriageCategory?
+  aiTriageResult Json?              // Full JSON from AI model
+  notes          String?
+  isProxy        Boolean            @default(false) // ASHA-assisted
+  ashaWorkerId   String?
+  proxyPatientName String?
+  connectionMode String?            // "VIDEO", "AUDIO", "TEXT"
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  prescription   Prescription?
+
+  @@map("consultations")
+}
+
+model HealthRecord {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     User     @relation(fields: [patientId], references: [id])
+  type        String   // "LAB_RESULT", "PRESCRIPTION", "VACCINATION", "GENERAL"
+  title       String
+  description String?
+  fileUrl     String?
+  offlineQrData String? // Compressed data for offline QR card
+  syncStatus  SyncStatus @default(PENDING)
+  doctorName  String?
+  createdAt   DateTime @default(now())
+
+  @@map("health_records")
+}
+
+model Prescription {
+  id              String   @id @default(cuid())
+  consultationId  String   @unique
+  consultation    Consultation @relation(fields: [consultationId], references: [id])
+  patientId       String
+  patient         User     @relation(fields: [patientId], references: [id])
+  doctorName      String
+  diagnosis       String
+  instructions    String?
+  medicines       Json     // Array of { name, dosage, frequency, days, quantity }
+  signatureHash   String?
+  smsDelivered    Boolean  @default(false)
+  smsPhone        String?
+  createdAt       DateTime @default(now())
+
+  @@map("prescriptions")
+}
+
+model PharmacyStock {
+  id          String  @id @default(cuid())
+  pharmacyId  String
+  pharmacy    PharmacyProfile @relation(fields: [pharmacyId], references: [id])
+  medicineName String
+  genericName String?
+  quantity    Int     @default(0)
+  unit        String  @default("tablets")
+  price       Float?
+  expiryDate  DateTime?
+  inStock     Boolean @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("pharmacy_stocks")
+}
+
+// Tracks ASHA's offline batch records waiting to sync
+model OfflineSyncQueue {
+  id          String     @id @default(cuid())
+  type        String     // "REGISTRATION", "CONSULTATION", "HEALTH_RECORD"
+  payload     Json
+  syncStatus  SyncStatus @default(PENDING)
+  retryCount  Int        @default(0)
+  ashaWorkerId String?
+  createdAt   DateTime   @default(now())
+  syncedAt    DateTime?
+  errorMessage String?
+
+  @@map("offline_sync_queue")
+}
