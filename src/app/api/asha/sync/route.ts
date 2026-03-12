@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       }, {} as Record<string, number>),
       timestamp: new Date().toISOString(),
       message: synced > 0
-        ? `Successfully synced ${synced} record(s) to GraamSehat servers.`
+        ? `Successfully synced ${synced} record(s) to NearDoc servers.`
         : "All records already synced. Database is up to date.",
     });
   } catch (error) {

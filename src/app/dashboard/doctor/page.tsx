@@ -88,7 +88,7 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
-            <span className="material-symbols-outlined text-slate-500">close</span>
+            <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">close</span>
           </button>
         </div>
 
@@ -97,7 +97,7 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
           <div className="space-y-6">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">monitor_heart</span> Clinical & Lab Records
+                <span translate="no" className="material-symbols-outlined text-primary notranslate">monitor_heart</span> Clinical & Lab Records
               </h3>
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3">
@@ -125,7 +125,7 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
 
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">history</span> Past Consultations
+                <span translate="no" className="material-symbols-outlined text-primary notranslate">history</span> Past Consultations
               </h3>
               {loading ? (
                 <div className="animate-pulse h-24 bg-slate-100 dark:bg-slate-800 rounded-xl" />
@@ -150,7 +150,7 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
           {/* Right Column: Add New Record */}
           <div className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl h-fit border border-primary/10">
             <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">add_notes</span> Add Clinical Note / Vital
+              <span translate="no" className="material-symbols-outlined text-primary notranslate">add_notes</span> Add Clinical Note / Vital
             </h3>
             <form onSubmit={handleAddRecord} className="space-y-4">
               <div>
@@ -181,7 +181,7 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
                 />
               </div>
               <button disabled={addingNote || !newTitle.trim()} type="submit" className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                {addingNote ? "Saving..." : "Save Record to Patient History"} <span className="material-symbols-outlined text-sm">save</span>
+                {addingNote ? "Saving..." : "Save Record to Patient History"} <span translate="no" className="material-symbols-outlined text-sm notranslate">save</span>
               </button>
             </form>
           </div>
@@ -367,7 +367,7 @@ export default function DoctorDashboard() {
       {/* Toast */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+          <span translate="no" className="material-symbols-outlined text-green-400 notranslate">check_circle</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
@@ -377,8 +377,8 @@ export default function DoctorDashboard() {
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           <div className="flex items-center gap-8">
             <Link href="/dashboard/doctor" className="flex items-center gap-2 text-primary">
-              <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GraamSehat</h2>
+              <Image src="/logo.png" alt="NearDoc Logo" width={32} height={32} className="rounded-lg object-contain" />
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">NearDoc</h2>
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               <span className="text-sm font-semibold text-primary border-b-2 border-primary pb-1 cursor-default">Dashboard</span>
@@ -403,7 +403,7 @@ export default function DoctorDashboard() {
                 {doctorName.split(" ").map((n) => n[0]).slice(0, 2).join("")}
               </div>
               <button onClick={handleLogout} className="ml-1 text-slate-400 hover:text-red-500 transition-colors" title="Logout">
-                <span className="material-symbols-outlined">logout</span>
+                <span translate="no" className="material-symbols-outlined notranslate">logout</span>
               </button>
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function DoctorDashboard() {
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col" style={{ maxHeight: "calc(100vh - 100px)" }}>
               <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">group_work</span> Patient Queue
+                  <span translate="no" className="material-symbols-outlined text-primary notranslate">group_work</span> Patient Queue
                 </h3>
                 <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">{pending.length} WAITING</span>
               </div>
@@ -438,7 +438,7 @@ export default function DoctorDashboard() {
               {/* Search */}
               <div className="p-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
-                  <span className="material-symbols-outlined text-slate-400 text-sm">search</span>
+                  <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">search</span>
                   <input
                     type="text"
                     value={search}
@@ -448,7 +448,7 @@ export default function DoctorDashboard() {
                   />
                   {search && (
                     <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600">
-                      <span className="material-symbols-outlined text-sm">close</span>
+                      <span translate="no" className="material-symbols-outlined text-sm notranslate">close</span>
                     </button>
                   )}
                 </div>
@@ -528,7 +528,7 @@ export default function DoctorDashboard() {
 
                 {consultations.length === 0 && (
                   <div className="p-8 text-center">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">manage_accounts</span>
+                    <span translate="no" className="material-symbols-outlined text-4xl text-slate-300 mb-2 notranslate">manage_accounts</span>
                     <p className="text-sm text-slate-400">No patients in queue.</p>
                     <p className="text-xs text-slate-400 mt-1">Patients will appear here when they book a consultation.</p>
                   </div>
@@ -550,7 +550,7 @@ export default function DoctorDashboard() {
                     </p>
                     {activeConsult.patient.allergies.length > 0 && (
                       <p className="text-xs font-bold text-red-600 mt-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">warning</span>
+                        <span translate="no" className="material-symbols-outlined text-sm notranslate">warning</span>
                         Allergies: {activeConsult.patient.allergies.join(", ")}
                       </p>
                     )}
@@ -566,7 +566,7 @@ export default function DoctorDashboard() {
                         disabled={starting}
                         className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full hover:bg-green-700 transition-all disabled:opacity-50"
                       >
-                        <span className="material-symbols-outlined text-sm">{starting ? "progress_activity" : "play_arrow"}</span>
+                        <span translate="no" className="material-symbols-outlined text-sm notranslate">{starting ? "progress_activity" : "play_arrow"}</span>
                         {starting ? "Starting..." : "Start"}
                       </button>
                     )}
@@ -613,11 +613,11 @@ export default function DoctorDashboard() {
                     {activeConsult.status !== "COMPLETED" && (
                       <div className="flex gap-3">
                         <button onClick={handleSaveRecord} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm disabled:opacity-50">
-                          {saving ? "Saving..." : "Save Record"} <span className="material-symbols-outlined text-sm">save</span>
+                          {saving ? "Saving..." : "Save Record"} <span translate="no" className="material-symbols-outlined text-sm notranslate">save</span>
                         </button>
                         {activeConsult.status === "PENDING" && (
                           <button onClick={handleStartConsultation} disabled={starting} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm disabled:opacity-50">
-                            {starting ? "Starting..." : "Start Consultation"} <span className="material-symbols-outlined text-sm">play_arrow</span>
+                            {starting ? "Starting..." : "Start Consultation"} <span translate="no" className="material-symbols-outlined text-sm notranslate">play_arrow</span>
                           </button>
                         )}
                         {activeConsult.status === "IN_PROGRESS" && (
@@ -626,10 +626,10 @@ export default function DoctorDashboard() {
                               href={`/dashboard/patient/consultation?id=${activeConsult.id}`}
                               className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm"
                             >
-                              Join Video Call <span className="material-symbols-outlined text-sm">videocam</span>
+                              Join Video Call <span translate="no" className="material-symbols-outlined text-sm notranslate">videocam</span>
                             </Link>
                             <button onClick={handleEndConsultation} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm">
-                              End Consultation <span className="material-symbols-outlined text-sm">check_circle</span>
+                              End Consultation <span translate="no" className="material-symbols-outlined text-sm notranslate">check_circle</span>
                             </button>
                           </div>
                         )}
@@ -637,7 +637,7 @@ export default function DoctorDashboard() {
                     )}
                     {activeConsult.status === "COMPLETED" && activeConsult.notes && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <span translate="no" className="material-symbols-outlined text-sm notranslate">check_circle</span>
                         This consultation is completed.
                       </div>
                     )}
@@ -647,7 +647,7 @@ export default function DoctorDashboard() {
                   <div className="space-y-4">
                     {activeConsult.prescription ? (
                       <div className="text-center py-8">
-                        <span className="material-symbols-outlined text-5xl text-green-400 mb-4 block">check_circle</span>
+                        <span translate="no" className="material-symbols-outlined text-5xl text-green-400 mb-4 block notranslate">check_circle</span>
                         <p className="text-slate-600 text-sm mb-4 font-bold">Prescription already issued for this consultation.</p>
                         <Link
                           href={`/dashboard/prescription?consultId=${activeConsult.id}`}
@@ -658,21 +658,21 @@ export default function DoctorDashboard() {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">medication</span>
+                        <span translate="no" className="material-symbols-outlined text-5xl text-slate-300 mb-4 block notranslate">medication</span>
                         <p className="text-slate-500 text-sm mb-4">Create a new digital prescription for this patient.</p>
                         <div className="flex flex-col gap-3 items-center">
                           <button
                             onClick={handleStartVideoCall}
                             className="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all text-sm flex items-center gap-2"
                           >
-                            <span className="material-symbols-outlined text-sm">videocam</span>
+                            <span translate="no" className="material-symbols-outlined text-sm notranslate">videocam</span>
                             Join Call to Prescribe
                           </button>
                           <Link
                             href={`/dashboard/prescription?consultId=${activeConsult.id}`}
                             className="text-primary text-sm font-bold hover:underline flex items-center gap-1"
                           >
-                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            <span translate="no" className="material-symbols-outlined text-sm notranslate">visibility</span>
                             View Existing (if any)
                           </Link>
                         </div>
@@ -683,7 +683,7 @@ export default function DoctorDashboard() {
                 {activeTab === "labs" && (
                   <div className="space-y-4">
                     <div className="text-center py-8">
-                      <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">biotech</span>
+                      <span translate="no" className="material-symbols-outlined text-5xl text-slate-300 mb-4 block notranslate">biotech</span>
                       <p className="text-slate-500 text-sm mb-4">Lab order form. Common tests:</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -702,7 +702,7 @@ export default function DoctorDashboard() {
                           onClick={() => showToast(`Lab order for "${test}" noted in consultation.`)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-primary hover:bg-primary/5 transition-all"
                         >
-                          <span className="material-symbols-outlined text-primary text-sm block mb-1">science</span>
+                          <span translate="no" className="material-symbols-outlined text-primary text-sm block mb-1 notranslate">science</span>
                           {test}
                         </button>
                       ))}
@@ -714,7 +714,7 @@ export default function DoctorDashboard() {
           ) : (
             <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center">
               <div className="text-center py-12">
-                <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">face</span>
+                <span translate="no" className="material-symbols-outlined text-5xl text-slate-300 mb-4 block notranslate">face</span>
                 <p className="text-slate-500 text-sm">Select a patient from the queue to begin.</p>
               </div>
             </div>
@@ -725,7 +725,7 @@ export default function DoctorDashboard() {
             {activeConsult && (
               <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
                 <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-slate-400">info</span> Patient Details
+                  <span translate="no" className="material-symbols-outlined text-slate-400 notranslate">info</span> Patient Details
                 </h4>
                 <div className="space-y-2 text-sm">
                   {[
@@ -746,13 +746,13 @@ export default function DoctorDashboard() {
                     onClick={handlePrint}
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
                   >
-                    <span className="material-symbols-outlined text-sm">print</span>Print
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">print</span>Print
                   </button>
                   <button
                     onClick={() => setShowRecordsModal(true)}
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                   >
-                    <span className="material-symbols-outlined text-sm">folder_open</span>Records
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">folder_open</span>Records
                   </button>
                 </div>
               </div>
@@ -771,7 +771,7 @@ export default function DoctorDashboard() {
                     onClick={item.action}
                     className="w-full flex items-center gap-3 text-left p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <span className="material-symbols-outlined text-primary">{item.icon}</span>
+                    <span translate="no" className="material-symbols-outlined text-primary notranslate">{item.icon}</span>
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
                   </button>
                 ))}

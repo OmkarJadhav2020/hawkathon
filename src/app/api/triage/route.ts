@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const currentMessage = message || symptomList;
     const conversationStep = Math.max(1, Math.min(step, 5));
 
-    const prompt = `You are a friendly, caring medical triage assistant for rural India (GraamSehat). 
+    const prompt = `You are a friendly, caring medical triage assistant for rural India (NearDoc). 
 This is step ${conversationStep} of a 5-step symptom assessment conversation.
 Patient's latest message: "${currentMessage}"
 All symptoms mentioned so far: ${symptomList}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
+import Image from "next/image";
 
 type StockItem = {
   id: string;
@@ -137,7 +138,7 @@ export default function PharmacyDashboard() {
         }),
       });
       if (!res.ok) throw new Error("Failed");
-      showToast(`Stock for "${medicine}" updated successfully! Syncing to GraamSehat network...`);
+      showToast(`Stock for "${medicine}" updated successfully! Syncing to NearDoc network...`);
       setMedicine(""); setQty(""); setExpiryDate("");
       fetchData(); // refresh stock
     } catch {
@@ -180,7 +181,7 @@ export default function PharmacyDashboard() {
     <div className="min-h-screen bg-background-light dark:bg-background-dark pb-20">
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+          <span translate="no" className="material-symbols-outlined text-green-400 notranslate">check_circle</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
@@ -188,19 +189,19 @@ export default function PharmacyDashboard() {
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-3xl">health_and_safety</span>
-            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GraamSehat</span>
-          </div>
+          <Link href="/dashboard/pharmacy" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="NearDoc Logo" width={56} height={56} className="rounded-xl object-contain shadow-sm" />
+            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">NearDoc</span>
+          </Link>
           <div className="hidden md:block">
             <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
-              {stock[0]?.pharmacy?.name ?? "GraamSehat Partner Pharmacy"}
+              {stock[0]?.pharmacy?.name ?? "NearDoc Partner Pharmacy"}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <span className="bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold px-3 py-1 uppercase tracking-wider">Pharmacist</span>
             <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center cursor-pointer" onClick={() => { localStorage.clear(); router.push("/"); }}>
-              <span className="material-symbols-outlined text-slate-500 dark:text-slate-400">logout</span>
+              <span translate="no" className="material-symbols-outlined text-slate-500 dark:text-slate-400 notranslate">logout</span>
             </div>
           </div>
         </nav>
@@ -215,7 +216,7 @@ export default function PharmacyDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => window.print()} className="flex items-center gap-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-primary hover:text-primary rounded-xl px-4 py-2.5 font-semibold transition-colors bg-white dark:bg-slate-900 shadow-sm text-sm">
-              <span className="material-symbols-outlined text-lg">download</span> Export Report
+              <span translate="no" className="material-symbols-outlined text-lg notranslate">download</span> Export Report
             </button>
           </div>
         </div>
@@ -226,7 +227,7 @@ export default function PharmacyDashboard() {
             onClick={() => setTab("orders")}
             className={`px-6 py-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${tab === "orders" ? "border-b-2 border-primary text-primary" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"}`}
           >
-            <span className="material-symbols-outlined text-lg">shopping_cart</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">shopping_cart</span>
             Incoming Orders
             {pendingOrdersCount > 0 && (
               <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full ml-1 animate-pulse">
@@ -238,7 +239,7 @@ export default function PharmacyDashboard() {
             onClick={() => setTab("inventory")}
             className={`px-6 py-3 text-sm font-bold flex items-center gap-2 transition-colors ${tab === "inventory" ? "border-b-2 border-primary text-primary" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"}`}
           >
-            <span className="material-symbols-outlined text-lg">inventory_2</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">inventory_2</span>
             Inventory Management
           </button>
         </div>
@@ -248,7 +249,7 @@ export default function PharmacyDashboard() {
           <div className="space-y-6">
             {orders.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">shopping_basket</span>
+                <span translate="no" className="material-symbols-outlined text-5xl text-slate-300 mb-2 notranslate">shopping_basket</span>
                 <p className="text-slate-500">No online orders received yet.</p>
               </div>
             ) : (
@@ -261,7 +262,7 @@ export default function PharmacyDashboard() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase mb-3 ${conf.color}`}>
-                            <span className="material-symbols-outlined text-[12px]">{conf.icon}</span>
+                            <span translate="no" className="material-symbols-outlined text-[12px] notranslate">{conf.icon}</span>
                             {conf.label}
                           </span>
                           <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">
@@ -277,27 +278,27 @@ export default function PharmacyDashboard() {
 
                       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 mb-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
+                          <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">person</span>
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{order.patient.name}</span>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="material-symbols-outlined text-slate-400 text-sm">call</span>
+                          <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">call</span>
                           <span className="text-sm text-slate-600 dark:text-slate-400">{order.patient.phone}</span>
                         </div>
                         {order.deliveryAddress ? (
                           <div className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-slate-400 text-sm mt-0.5">local_shipping</span>
+                            <span translate="no" className="material-symbols-outlined text-slate-400 text-sm mt-0.5 notranslate">local_shipping</span>
                             <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{order.deliveryAddress}</span>
                           </div>
                         ) : order.patient.village && (
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-slate-400 text-sm">location_on</span>
+                            <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">location_on</span>
                             <span className="text-sm text-slate-600 dark:text-slate-400">{order.patient.village} (Default)</span>
                           </div>
                         )}
                         {order.notes && (
                           <div className="mt-3 text-xs italic text-slate-500 border-t border-slate-200 dark:border-slate-700 pt-2 flex gap-1 items-start">
-                            <span className="material-symbols-outlined text-[14px]">info</span>
+                            <span translate="no" className="material-symbols-outlined text-[14px] notranslate">info</span>
                             "{order.notes}"
                           </div>
                         )}
@@ -345,7 +346,7 @@ export default function PharmacyDashboard() {
             {lowCount > 0 && (
               <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-red-600">error</span>
+                  <span translate="no" className="material-symbols-outlined text-red-600 notranslate">error</span>
                   <p className="text-red-700 font-medium">{lowCount} medicines running low — notify district supplier?</p>
                 </div>
                 <button onClick={() => showToast("Alert sent to district medical officer!")} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">Send Alert</button>
@@ -382,7 +383,7 @@ export default function PharmacyDashboard() {
                     </div>
                   </div>
                   <button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl shadow-sm transition-all mt-2 flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined">inventory</span> Update Stock
+                    <span translate="no" className="material-symbols-outlined notranslate">inventory</span> Update Stock
                   </button>
                 </form>
               </div>
@@ -392,7 +393,7 @@ export default function PharmacyDashboard() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-amber-600">chat</span>
+                      <span translate="no" className="material-symbols-outlined text-amber-600 notranslate">chat</span>
                       <h2 className="text-lg font-bold text-slate-900 dark:text-white">WhatsApp / SMS Update</h2>
                     </div>
                     <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">Instant Sync</span>
@@ -411,7 +412,7 @@ export default function PharmacyDashboard() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-green-600">
-                  <span className="material-symbols-outlined text-sm">bolt</span>
+                  <span translate="no" className="material-symbols-outlined text-sm notranslate">bolt</span>
                   Supported 24/7 · Auto-syncs in 5 mins
                 </div>
               </div>
@@ -422,7 +423,7 @@ export default function PharmacyDashboard() {
               <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Current Medicine Stock</h2>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                  <span translate="no" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm notranslate">search</span>
                   <input value={search} onChange={(e) => setSearch(e.target.value)} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full pl-9 pr-4 py-1.5 text-xs outline-none w-52" placeholder="Search inventory..." />
                 </div>
               </div>
@@ -464,7 +465,7 @@ export default function PharmacyDashboard() {
                             </button>
                           ) : (
                             <button onClick={() => { setMedicine(m.medicineName); setUnit(m.unit); }} className="text-slate-400 hover:text-primary transition-colors">
-                              <span className="material-symbols-outlined text-lg">edit</span>
+                              <span translate="no" className="material-symbols-outlined text-lg notranslate">edit</span>
                             </button>
                           )}
                         </td>

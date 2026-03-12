@@ -1,4 +1,4 @@
-# GraamSehat — Complete System Audit
+# NearDoc — Complete System Audit
 
 > Last updated: 2026-03-13 · Version 1.0 Beta
 

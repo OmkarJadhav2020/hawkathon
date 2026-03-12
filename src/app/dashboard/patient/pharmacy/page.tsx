@@ -124,7 +124,7 @@ export default function PharmacyPage() {
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Confirm Delivery Address</h3>
               <button onClick={() => setAddressModal(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <span className="material-symbols-outlined">close</span>
+                <span translate="no" className="material-symbols-outlined notranslate">close</span>
               </button>
             </div>
             <form onSubmit={confirmOrder} className="p-6">
@@ -149,9 +149,9 @@ export default function PharmacyPage() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4">
           <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-            <span className="material-symbols-outlined">arrow_back</span>
+            <span translate="no" className="material-symbols-outlined notranslate">arrow_back</span>
           </Link>
-          <span className="material-symbols-outlined text-primary text-2xl">local_pharmacy</span>
+          <span translate="no" className="material-symbols-outlined text-primary text-2xl notranslate">local_pharmacy</span>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Find Medicine</h1>
             <p className="text-xs text-slate-500">Check real-time availability & order from registered pharmacies</p>
@@ -162,7 +162,7 @@ export default function PharmacyPage() {
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Search */}
         <form onSubmit={handleSearch} className="relative mb-8">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+          <span translate="no" className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 notranslate">search</span>
           <input
             className="w-full pl-12 pr-32 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/40 outline-none shadow-sm"
             placeholder="Search medicine name, generic name..."
@@ -188,7 +188,7 @@ export default function PharmacyPage() {
               </div>
             ) : medicines.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
-                <span className="material-symbols-outlined text-4xl mb-2 block">medication_liquid</span>
+                <span translate="no" className="material-symbols-outlined text-4xl mb-2 block notranslate">medication_liquid</span>
                 <p className="text-sm">{search ? `No medicines found for "${search}"` : "No stock data available."}</p>
               </div>
             ) : (
@@ -221,7 +221,7 @@ export default function PharmacyPage() {
                       <td className="px-6 py-4">
                         {ordered.includes(m.id) ? (
                           <span className="text-xs font-bold text-green-600 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-sm">check_circle</span> Ordered
+                            <span translate="no" className="material-symbols-outlined text-sm notranslate">check_circle</span> Ordered
                           </span>
                         ) : (
                           <button
@@ -250,14 +250,14 @@ export default function PharmacyPage() {
         {/* My Orders Link */}
         <div className="mt-4 flex justify-end">
           <Link href="/dashboard/patient/orders" className="text-primary text-sm font-bold hover:underline flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">receipt_long</span> View My Orders
+            <span translate="no" className="material-symbols-outlined text-sm notranslate">receipt_long</span> View My Orders
           </Link>
         </div>
 
         {/* Home Delivery CTA */}
         <div className="mt-6 p-6 bg-slate-900 dark:bg-slate-800 text-white rounded-xl flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <span className="material-symbols-outlined text-yellow-400 text-3xl">delivery_dining</span>
+            <span translate="no" className="material-symbols-outlined text-yellow-400 text-3xl notranslate">delivery_dining</span>
             <div>
               <h3 className="font-bold">Home Delivery Available</h3>
               <p className="text-sm text-slate-300">Order above and our pharmacy partner will deliver to your village within 24 hours.</p>

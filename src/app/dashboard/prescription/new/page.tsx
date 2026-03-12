@@ -100,7 +100,7 @@ function CreatePrescriptionContent() {
     <div className="min-h-screen bg-background-light dark:bg-background-dark pb-20">
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2">
-          <span className="material-symbols-outlined text-amber-400">warning</span>
+          <span translate="no" className="material-symbols-outlined text-amber-400 notranslate">warning</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
@@ -111,7 +111,7 @@ function CreatePrescriptionContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <Link href="/dashboard/doctor" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-                <span className="material-symbols-outlined">close</span>
+                <span translate="no" className="material-symbols-outlined notranslate">close</span>
               </Link>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">New Prescription</h1>
             </div>
@@ -120,7 +120,7 @@ function CreatePrescriptionContent() {
               disabled={saving}
               className="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
             >
-              {saving ? <span className="material-symbols-outlined animate-spin">refresh</span> : <span className="material-symbols-outlined">send</span>}
+              {saving ? <span translate="no" className="material-symbols-outlined animate-spin notranslate">refresh</span> : <span translate="no" className="material-symbols-outlined notranslate">send</span>}
               {saving ? "Saving..." : "Issue & Send SMS"}
             </button>
           </div>
@@ -156,7 +156,7 @@ function CreatePrescriptionContent() {
           <div className="flex justify-between flex-wrap gap-4 mb-4">
             <h2 className="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase tracking-widest">Medicines (Rx)</h2>
             <Link href="/dashboard/pharmacy" target="_blank" className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-              <span className="material-symbols-outlined text-sm">inventory</span> Check Local Stock
+              <span translate="no" className="material-symbols-outlined text-sm notranslate">inventory</span> Check Local Stock
             </Link>
           </div>
           
@@ -165,7 +165,7 @@ function CreatePrescriptionContent() {
               <div key={i} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 relative group">
                 {medicines.length > 1 && (
                   <button onClick={() => removeMedicine(i)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-100 text-red-500 rounded-full flex items-center justify-center md:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="material-symbols-outlined text-[14px]">close</span>
+                    <span translate="no" className="material-symbols-outlined text-[14px] notranslate">close</span>
                   </button>
                 )}
                 <div className="flex-1 space-y-3">
@@ -208,7 +208,7 @@ function CreatePrescriptionContent() {
           </div>
 
           <button onClick={addMedicine} className="mt-4 w-full border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-500 font-bold py-3 rounded-xl hover:border-primary hover:text-primary transition-colors flex justify-center items-center gap-2">
-            <span className="material-symbols-outlined">add</span> Add Another Medicine
+            <span translate="no" className="material-symbols-outlined notranslate">add</span> Add Another Medicine
           </button>
         </div>
 

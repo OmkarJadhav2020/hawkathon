@@ -1,6 +1,6 @@
 {
-  "name": "GraamSehat",
-  "short_name": "GraamSehat",
+  "name": "NearDoc",
+  "short_name": "NearDoc",
   "description": "Rural Teleconsultation and Health Platform",
   "start_url": "/",
   "display": "standalone",

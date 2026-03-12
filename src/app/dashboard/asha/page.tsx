@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 
 type AshaProfile = {
@@ -300,11 +301,11 @@ export default function AshaWorkerDashboard() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Register New Patient</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {isOnline ? "Data saved directly to GraamSehat DB" : "Offline mode: Data will be queued locally"}
+                  {isOnline ? "Data saved directly to NearDoc DB" : "Offline mode: Data will be queued locally"}
                 </p>
               </div>
               <button onClick={() => { setShowRegModal(false); setRegError(""); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                <span className="material-symbols-outlined text-slate-500">close</span>
+                <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">close</span>
               </button>
             </div>
 
@@ -418,8 +419,8 @@ export default function AshaWorkerDashboard() {
                   className="flex-1 py-3 rounded-xl bg-asha hover:opacity-90 text-white font-bold text-sm shadow-lg shadow-asha/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {regLoading
-                    ? <><span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> Saving...</>
-                    : <><span className="material-symbols-outlined text-sm">person_add</span> Register Patient</>
+                    ? <><span translate="no" className="material-symbols-outlined text-sm animate-spin notranslate">progress_activity</span> Saving...</>
+                    : <><span translate="no" className="material-symbols-outlined text-sm notranslate">person_add</span> Register Patient</>
                   }
                 </button>
               </div>
@@ -432,17 +433,17 @@ export default function AshaWorkerDashboard() {
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark px-6 py-4">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 text-asha">
-            <span className="material-symbols-outlined text-3xl font-bold">health_and_safety</span>
-            <h2 className="text-xl font-black leading-tight tracking-tight uppercase">GraamSehat ASHA</h2>
+            <Image src="/logo.png" alt="NearDoc Logo" width={56} height={56} className="rounded-xl object-contain shadow-sm" />
+            <h2 className="text-xl font-black leading-tight tracking-tight uppercase">NearDoc ASHA</h2>
           </div>
           <div className="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 w-80">
-            <span className="material-symbols-outlined text-slate-500">search</span>
+            <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">search</span>
             <input className="bg-transparent border-none outline-none text-sm w-full placeholder:text-slate-500 ml-2" placeholder="Search Patient ID or Name..." type="text" />
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${isOnline ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>
-            <span className="material-symbols-outlined text-sm">{isOnline ? "wifi" : "wifi_off"}</span>
+            <span translate="no" className="material-symbols-outlined text-sm notranslate">{isOnline ? "wifi" : "wifi_off"}</span>
             <span className="text-xs font-bold uppercase tracking-wider">{isOnline ? "Online" : "Offline"}</span>
           </div>
           <div className="size-10 rounded-full border-2 border-asha bg-asha/10 flex items-center justify-center text-asha font-bold">
@@ -466,7 +467,7 @@ export default function AshaWorkerDashboard() {
                 onClick={() => setActiveNav(item.id)}
                 className={`flex flex-col md:flex-row items-center gap-3 px-4 py-4 rounded-xl transition-all ${activeNav === item.id ? "bg-asha text-white shadow-lg shadow-asha/20" : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
               >
-                <span className="material-symbols-outlined">{item.icon}</span>
+                <span translate="no" className="material-symbols-outlined notranslate">{item.icon}</span>
                 <span className="text-xs md:text-sm font-bold">{item.label}</span>
               </button>
             ))}
@@ -489,7 +490,7 @@ export default function AshaWorkerDashboard() {
               onClick={handleLogout}
               className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-bold"
             >
-              <span className="material-symbols-outlined text-lg">logout</span>
+              <span translate="no" className="material-symbols-outlined text-lg notranslate">logout</span>
               <span className="hidden md:inline">Logout</span>
             </button>
           </div>
@@ -520,14 +521,14 @@ export default function AshaWorkerDashboard() {
                       onClick={() => setShowRegModal(true)}
                       className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
                     >
-                      <span className="material-symbols-outlined">add_circle</span> New Registration
+                      <span translate="no" className="material-symbols-outlined notranslate">add_circle</span> New Registration
                     </button>
                     <button
                       onClick={handleSync}
                       disabled={syncing}
                       className="flex items-center gap-2 px-6 py-3 bg-asha text-white rounded-xl font-bold shadow-lg shadow-asha/30 active:scale-95 transition-transform disabled:opacity-70"
                     >
-                      <span className={`material-symbols-outlined ${syncing ? "animate-spin" : ""}`}>sync</span>
+                      <span translate="no" className={`material-symbols-outlined ${syncing ? "animate-spin" : ""} notranslate`}>sync</span>
                       {syncing ? "Syncing..." : "Sync Now"}
                     </button>
                   </div>
@@ -625,15 +626,15 @@ export default function AshaWorkerDashboard() {
                       disabled={syncing || syncQueue.length === 0}
                       className="flex items-center gap-2 px-5 py-2.5 bg-asha text-white rounded-xl font-bold text-sm shadow disabled:opacity-50 transition-all"
                     >
-                      <span className={`material-symbols-outlined text-sm ${syncing ? "animate-spin" : ""}`}>sync</span>
+                      <span translate="no" className={`material-symbols-outlined text-sm ${syncing ? "animate-spin" : ""} notranslate`}>sync</span>
                       {syncing ? "Syncing..." : "Sync All"}
                     </button>
                   </div>
                   <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                     {syncQueue.length === 0 ? (
                       <div className="py-12 text-center">
-                        <span className="material-symbols-outlined text-4xl text-green-500 mb-3 block">cloud_done</span>
-                        <p className="text-slate-500 text-sm">All records have been synced to GraamSehat!</p>
+                        <span translate="no" className="material-symbols-outlined text-4xl text-green-500 mb-3 block notranslate">cloud_done</span>
+                        <p className="text-slate-500 text-sm">All records have been synced to NearDoc!</p>
                         <p className="text-xs text-slate-400 mt-1">
                           {profile?.lastSync ? `Last sync: ${new Date(profile.lastSync).toLocaleString("en-IN")}` : ""}
                         </p>
@@ -660,7 +661,7 @@ export default function AshaWorkerDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {patients.length === 0 ? (
                     <div className="col-span-3 py-20 text-center text-slate-400">
-                      <span className="material-symbols-outlined text-5xl mb-3 block">person_search</span>
+                      <span translate="no" className="material-symbols-outlined text-5xl mb-3 block notranslate">person_search</span>
                       <p>No patients in your villages yet.</p>
                       <button onClick={() => { setActiveNav("dashboard"); setShowRegModal(true); }} className="mt-4 px-5 py-2 bg-asha text-white rounded-xl text-sm font-bold">Register first patient</button>
                     </div>
@@ -703,7 +704,7 @@ export default function AshaWorkerDashboard() {
                     <button key={card.label} onClick={() => showToast(`Opening "${card.label}"...`)} className={`group relative overflow-hidden rounded-2xl aspect-[4/3] bg-gradient-to-br ${card.bg} border border-white/20 ${card.isDashed ? "border-dashed border-2 border-slate-300 dark:border-slate-600" : ""} cursor-pointer`}>
                       {card.isDashed ? (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                          <span className="material-symbols-outlined text-3xl">download</span>
+                          <span translate="no" className="material-symbols-outlined text-3xl notranslate">download</span>
                           <span className="font-bold text-xs">{card.label}</span>
                         </div>
                       ) : (

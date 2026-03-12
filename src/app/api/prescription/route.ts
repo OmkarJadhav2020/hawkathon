@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
 
     // Try to send SMS if Twilio is configured
     let smsSent = false;
-    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE && patientPhone) {
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE) {
       const medsList = (medicines ?? []).map((m: { name: string }) => m.name).join(", ");
-      const smsBody = `GraamSehat Rx\nPatient: ${patientName}\nDiagnosis: ${diagnosis}\nMeds: ${medsList}\nDoctor: ${doctorName}`;
+      const smsBody = `NearDoc Rx\nPatient: ${patientName}\nDiagnosis: ${diagnosis}\nMeds: ${medsList}\nDoctor: ${doctorName}`;
       const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
       try {
         const twilioResponse = await fetch(twilioUrl, {
@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
             Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64")}`,
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: new URLSearchParams({ To: patientPhone, From: TWILIO_PHONE, Body: smsBody }).toString(),
+          // HARDCODED TESTING NUMBER FOR DEMO
+          body: new URLSearchParams({ To: "+919322051181", From: TWILIO_PHONE, Body: smsBody }).toString(),
         });
         if (twilioResponse.ok) {
           smsSent = true;

@@ -1,4 +1,4 @@
-# GraamSehat — Developer Setup & Testing Guide
+# NearDoc — Developer Setup & Testing Guide
 
 > Rural Health Telemedicine Platform · Next.js 14 · Prisma · Neon PostgreSQL
 
@@ -8,7 +8,7 @@
 
 ```bash
 git clone <repo-url>
-cd graamsehat-app
+cd neardoc-app
 npm install
 npx prisma generate
 npm run dev
@@ -20,11 +20,11 @@ Open **http://localhost:3000**
 
 ## Environment Variables
 
-Create `.env.local` in the root of `graamsehat-app/`:
+Create `.env.local` in the root of `neardoc-app/`:
 
 ```env
 # Required — Neon PostgreSQL connection string
-DATABASE_URL="postgresql://user:password@host/graamsehat?sslmode=require"
+DATABASE_URL="postgresql://user:password@host/neardoc?sslmode=require"
 
 # Optional — Gemini AI (for symptom triage)
 GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
@@ -72,7 +72,7 @@ After running `node seed.js`, use these accounts:
 ## Architecture
 
 ```
-graamsehat-app/
+neardoc-app/
 ├── src/app/
 │   ├── page.tsx                         # Login page
 │   ├── api/

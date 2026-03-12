@@ -75,7 +75,7 @@ export default function HealthRecordDetailPage() {
   if (notFound || !record) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-8">
-        <span className="material-symbols-outlined text-6xl text-slate-300">folder_off</span>
+        <span translate="no" className="material-symbols-outlined text-6xl text-slate-300 notranslate">folder_off</span>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Record Not Found</h1>
         <p className="text-slate-500">This health record does not exist or may have been removed.</p>
         <Link href="/dashboard/patient/records" className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:opacity-90">
@@ -94,10 +94,10 @@ export default function HealthRecordDetailPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard/patient/records" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
-              <span className="material-symbols-outlined">arrow_back</span>
+              <span translate="no" className="material-symbols-outlined notranslate">arrow_back</span>
             </Link>
             <div className="bg-primary p-1.5 rounded-lg text-white">
-              <span className="material-symbols-outlined text-xl">folder_open</span>
+              <span translate="no" className="material-symbols-outlined text-xl notranslate">folder_open</span>
             </div>
             <div>
               <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Health Record</h1>
@@ -112,14 +112,14 @@ export default function HealthRecordDetailPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-3 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors"
               >
-                <span className="material-symbols-outlined text-sm">download</span> Download
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">download</span> Download
               </a>
             )}
             <button
               onClick={() => window.print()}
               className="flex items-center gap-1 px-3 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
             >
-              <span className="material-symbols-outlined text-sm">print</span> Print
+              <span translate="no" className="material-symbols-outlined text-sm notranslate">print</span> Print
             </button>
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function HealthRecordDetailPage() {
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-xl border ${meta.color}`}>
-                  <span className="material-symbols-outlined text-2xl">{meta.icon}</span>
+                  <span translate="no" className="material-symbols-outlined text-2xl notranslate">{meta.icon}</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -147,7 +147,7 @@ export default function HealthRecordDetailPage() {
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">{record.title}</h2>
                   {record.doctorName && (
                     <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">stethoscope</span>
+                      <span translate="no" className="material-symbols-outlined text-sm notranslate">stethoscope</span>
                       {record.doctorName}
                     </p>
                   )}
@@ -204,7 +204,7 @@ export default function HealthRecordDetailPage() {
                     download={`record-${record.id.slice(-8)}.png`}
                     className="mt-2 inline-flex items-center gap-1 text-xs text-primary font-bold hover:underline"
                   >
-                    <span className="material-symbols-outlined text-sm">download</span> Save QR
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">download</span> Save QR
                   </a>
                 </>
               ) : (
@@ -221,21 +221,21 @@ export default function HealthRecordDetailPage() {
                 href="/dashboard/patient/records"
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                <span className="material-symbols-outlined text-primary">folder</span>
+                <span translate="no" className="material-symbols-outlined text-primary notranslate">folder</span>
                 All Records
               </Link>
               <Link
                 href="/dashboard/patient"
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                <span className="material-symbols-outlined text-primary">home</span>
+                <span translate="no" className="material-symbols-outlined text-primary notranslate">home</span>
                 My Dashboard
               </Link>
               <Link
                 href="/dashboard/patient/appointments"
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                <span className="material-symbols-outlined text-primary">calendar_month</span>
+                <span translate="no" className="material-symbols-outlined text-primary notranslate">calendar_month</span>
                 Book Appointment
               </Link>
             </div>

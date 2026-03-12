@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
+import LanguageSelector from "@/components/LanguageSelector";
 
 type Order = {
   id: string;
@@ -75,30 +77,33 @@ export default function PatientOrdersPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
         <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
-          <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
-          <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
+          <Image src="/logo.png" alt="NearDoc Logo" width={56} height={56} className="rounded-xl object-contain shadow-sm" />
+          <h2 className="text-slate-900 dark:text-white text-2xl font-black leading-tight tracking-tight">NearDoc</h2>
         </Link>
         <div className="flex flex-1 justify-end gap-3 items-center">
           <nav className="hidden md:flex gap-6 mr-6">
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient">Home</Link>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/appointments">Appointments</Link>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/records">Records</Link>
-            <a className="text-sm font-semibold text-primary border-b-2 border-primary py-5" href="#">My Orders</a>
+            <Link className="text-primary font-semibold flex items-center gap-1 text-sm" href="#">
+              <span translate="no" className="material-symbols-outlined text-sm notranslate">inventory_2</span> My Orders
+            </Link>
           </nav>
           <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full font-semibold">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"></span>
             Live updates
           </div>
           <button onClick={fetchOrders} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors" title="Refresh">
-            <span className="material-symbols-outlined text-lg">refresh</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">refresh</span>
           </button>
           <button
             onClick={() => { localStorage.clear(); window.location.href = "/"; }}
             className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
             title="Sign Out"
           >
-            <span className="material-symbols-outlined text-lg">logout</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">logout</span>
           </button>
+          <LanguageSelector />
         </div>
       </header>
 
@@ -150,7 +155,7 @@ export default function PatientOrdersPage() {
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-slate-400">shopping_bag</span>
+              <span translate="no" className="material-symbols-outlined text-3xl text-slate-400 notranslate">shopping_bag</span>
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               {filter !== "ALL" ? `No ${filter.toLowerCase()} orders` : "No orders yet"}
@@ -184,7 +189,7 @@ export default function PatientOrdersPage() {
                         <p className="text-xs text-slate-400 mt-0.5">Order #{order.id.slice(-6).toUpperCase()}</p>
                       </div>
                       <span className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-black uppercase flex items-center gap-1 ${conf.color}`}>
-                        <span className="material-symbols-outlined text-[14px]">{conf.icon}</span>
+                        <span translate="no" className="material-symbols-outlined text-[14px] notranslate">{conf.icon}</span>
                         {conf.label}
                       </span>
                     </div>
@@ -200,7 +205,7 @@ export default function PatientOrdersPage() {
                               <div className={`flex flex-col items-center flex-1 ${i > 0 ? "relative" : ""}`}>
                                 {i > 0 && <div className={`absolute left-0 right-1/2 top-3 h-0.5 ${done || active ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"}`} />}
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 relative text-[10px] font-black transition-all ${done ? "bg-primary text-white" : active ? "bg-primary/20 text-primary border-2 border-primary" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
-                                  {done ? <span className="material-symbols-outlined text-xs">check</span> : i + 1}
+                                  {done ? <span translate="no" className="material-symbols-outlined text-xs notranslate">check</span> : i + 1}
                                 </div>
                                 <p className={`text-[9px] font-bold mt-1 text-center ${done || active ? "text-primary" : "text-slate-400"}`}>{stage}</p>
                               </div>
@@ -220,7 +225,7 @@ export default function PatientOrdersPage() {
                             <p className="text-xs text-slate-500 truncate mt-0.5">{order.pharmacyStock.pharmacy.address}</p>
                           </>
                         ) : (
-                          <p className="text-sm text-slate-500">GraamSehat Partner Pharmacy</p>
+                          <p className="text-sm text-slate-500">NearDoc Partner Pharmacy</p>
                         )}
                       </div>
                       <div>
@@ -232,7 +237,7 @@ export default function PatientOrdersPage() {
 
                     {order.deliveryAddress && (
                       <div className="mt-4 flex items-start gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
-                        <span className="material-symbols-outlined text-primary text-sm mt-0.5">local_shipping</span>
+                        <span translate="no" className="material-symbols-outlined text-primary text-sm mt-0.5 notranslate">local_shipping</span>
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Delivery Address</p>
                           <p className="text-sm text-slate-700 dark:text-slate-300">{order.deliveryAddress}</p>
@@ -254,7 +259,7 @@ export default function PatientOrdersPage() {
 
         <div className="mt-8">
           <Link href="/dashboard/patient/pharmacy" className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:border-primary hover:text-primary transition-colors text-sm font-semibold">
-            <span className="material-symbols-outlined">add_shopping_cart</span>
+            <span translate="no" className="material-symbols-outlined notranslate">add_shopping_cart</span>
             Order More Medicines
           </Link>
         </div>

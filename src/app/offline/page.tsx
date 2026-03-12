@@ -85,7 +85,7 @@ export default function OfflinePage() {
       {/* Restored banner */}
       {isOnline && (
         <div className="fixed top-0 inset-x-0 z-50 bg-green-500 text-white py-3 text-center font-bold flex items-center justify-center gap-2 text-sm shadow-lg">
-          <span className="material-symbols-outlined">wifi</span>
+          <span translate="no" className="material-symbols-outlined notranslate">wifi</span>
           Connection restored! Redirecting you back...
         </div>
       )}
@@ -94,7 +94,7 @@ export default function OfflinePage() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <nav className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-3xl">health_and_safety</span>
+            <span translate="no" className="material-symbols-outlined text-primary text-3xl notranslate">health_and_safety</span>
             <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Graam<span className="text-primary">Sehat</span></span>
           </div>
           <div className="flex items-center gap-4">
@@ -105,7 +105,7 @@ export default function OfflinePage() {
               </span>
             </div>
             <Link href="/dashboard/patient" className="text-slate-500 hover:text-primary transition-colors">
-              <span className="material-symbols-outlined">home</span>
+              <span translate="no" className="material-symbols-outlined notranslate">home</span>
             </Link>
           </div>
         </nav>
@@ -117,7 +117,7 @@ export default function OfflinePage() {
           <div className="relative flex items-center justify-center w-24 h-24 mb-8">
             <div className={`w-24 h-24 rounded-full border-4 ${isOnline ? "border-green-200" : "border-red-200"} animate-ping absolute opacity-60`}></div>
             <div className={`relative w-24 h-24 rounded-full ${isOnline ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"} border-2 flex items-center justify-center`}>
-              <span className={`material-symbols-outlined text-5xl ${isOnline ? "text-green-500" : "text-red-500"}`}>
+              <span translate="no" className={`material-symbols-outlined text-5xl ${isOnline ? "text-green-500" : "text-red-500"} notranslate`}>
                 {isOnline ? "wifi" : "wifi_off"}
               </span>
             </div>
@@ -126,7 +126,7 @@ export default function OfflinePage() {
             {isOnline ? "You're Back Online!" : "You're Offline"}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">
-            {isOnline ? "Connection restored — redirecting you now..." : "Don't worry — GraamSehat works offline too"}
+            {isOnline ? "Connection restored — redirecting you now..." : "Don't worry — NearDoc works offline too"}
           </p>
           <p className="text-slate-400 text-xs mt-1 uppercase tracking-wide">Last synced: {lastSync}</p>
         </section>
@@ -138,7 +138,7 @@ export default function OfflinePage() {
             {WORKS_OFFLINE.map((item) => (
               <div key={item.title} className="bg-green-50/50 border-2 border-green-200 dark:border-green-900/40 dark:bg-green-900/10 rounded-xl p-5 flex gap-4 items-start hover:border-primary transition-colors">
                 <div className="w-11 h-11 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <span className="material-symbols-outlined text-primary">{item.icon}</span>
+                  <span translate="no" className="material-symbols-outlined text-primary notranslate">{item.icon}</span>
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{item.title}</h3>
@@ -152,13 +152,13 @@ export default function OfflinePage() {
         {/* Not available */}
         <section className="bg-slate-100 dark:bg-slate-800 rounded-xl p-5 mb-8">
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400 text-lg">info</span>
+            <span translate="no" className="material-symbols-outlined text-slate-400 text-lg notranslate">info</span>
             Not available offline:
           </h3>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {NOT_OFFLINE.map((item) => (
               <div key={item} className="flex items-center gap-1.5 text-slate-400 text-sm">
-                <span className="material-symbols-outlined text-base text-red-400">cancel</span>
+                <span translate="no" className="material-symbols-outlined text-base text-red-400 notranslate">cancel</span>
                 <span>{item}</span>
               </div>
             ))}
@@ -169,7 +169,7 @@ export default function OfflinePage() {
         <section className="space-y-4">
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <span className="material-symbols-outlined text-primary text-3xl animate-spin" style={{ animationDuration: "3s" }}>refresh</span>
+              <span translate="no" className="material-symbols-outlined text-primary text-3xl animate-spin notranslate" style={{ animationDuration: "3s" }}>refresh</span>
               <div>
                 <p className="font-bold text-slate-800 dark:text-slate-200 leading-none">
                   {checkingNow ? "Checking connectivity..." : "Retrying connection..."}
@@ -203,14 +203,14 @@ export default function OfflinePage() {
               disabled={checkingNow}
               className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <span className="material-symbols-outlined">sync</span>
+              <span translate="no" className="material-symbols-outlined notranslate">sync</span>
               {checkingNow ? "Checking..." : "Try Again Now"}
             </button>
             <Link
               href="/dashboard/patient"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-primary hover:text-primary rounded-xl px-5 py-3 text-sm font-medium transition-colors flex items-center gap-2"
             >
-              <span className="material-symbols-outlined text-lg">home</span>
+              <span translate="no" className="material-symbols-outlined text-lg notranslate">home</span>
               Dashboard
             </Link>
           </div>

@@ -162,13 +162,13 @@ export default function SymptomChecker() {
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 lg:px-20 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500">
-            <span className="material-symbols-outlined">arrow_back</span>
+            <span translate="no" className="material-symbols-outlined notranslate">arrow_back</span>
           </Link>
           <div className="flex items-center justify-center size-10 rounded-xl bg-primary text-white">
-            <span className="material-symbols-outlined">health_and_safety</span>
+            <span translate="no" className="material-symbols-outlined notranslate">health_and_safety</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold leading-tight tracking-tight">GraamSehat AI</h2>
+            <h2 className="text-lg font-bold leading-tight tracking-tight">NearDoc AI</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Smart Health Triage</p>
           </div>
         </div>
@@ -178,12 +178,12 @@ export default function SymptomChecker() {
               onClick={resetConversation}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
-              <span className="material-symbols-outlined text-sm">refresh</span>
+              <span translate="no" className="material-symbols-outlined text-sm notranslate">refresh</span>
               Start Over
             </button>
           )}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-            <span className="material-symbols-outlined text-sm">wifi</span>
+            <span translate="no" className="material-symbols-outlined text-sm notranslate">wifi</span>
             <span className="text-xs font-bold">Online</span>
           </div>
         </div>
@@ -208,7 +208,7 @@ export default function SymptomChecker() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${msg.role === "ai" ? "bg-primary/10 text-primary" : "bg-primary text-white"}`}>
-                  <span className="material-symbols-outlined text-sm">{msg.role === "ai" ? "smart_toy" : "person"}</span>
+                  <span translate="no" className="material-symbols-outlined text-sm notranslate">{msg.role === "ai" ? "smart_toy" : "person"}</span>
                 </div>
                 <div className={`flex flex-col gap-2 max-w-[80%] ${msg.role === "user" ? "items-end" : ""}`}>
                   <div className={`p-4 rounded-2xl whitespace-pre-wrap ${msg.role === "ai" ? "bg-slate-100 dark:bg-slate-800 rounded-tl-none" : "bg-primary text-white rounded-tr-none"}`}>
@@ -237,7 +237,7 @@ export default function SymptomChecker() {
             {loading && (
               <div className="flex items-start gap-3">
                 <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-sm">smart_toy</span>
+                  <span translate="no" className="material-symbols-outlined text-sm notranslate">smart_toy</span>
                 </div>
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-none p-4 flex gap-1.5">
                   {[0, 1, 2].map((d) => (
@@ -255,7 +255,7 @@ export default function SymptomChecker() {
             <div className="mb-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="material-symbols-outlined text-blue-600">smart_toy</span>
+                  <span translate="no" className="material-symbols-outlined text-blue-600 notranslate">smart_toy</span>
                   <h3 className="font-bold text-slate-900 dark:text-white text-sm">Speak to AI Health Assistant</h3>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400">Prefer speaking? Tap the widget to start a live voice conversation about your symptoms.</p>
@@ -283,11 +283,11 @@ export default function SymptomChecker() {
                 disabled={!input.trim() || loading}
                 className="absolute right-2 p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
-                <span className="material-symbols-outlined">send</span>
+                <span translate="no" className="material-symbols-outlined notranslate">send</span>
               </button>
             </div>
             <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-slate-400">
-              <span className="material-symbols-outlined text-[12px]">info</span>
+              <span translate="no" className="material-symbols-outlined text-[12px] notranslate">info</span>
               <p>This AI tool is for informational purposes only, not a medical diagnosis.</p>
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function SymptomChecker() {
               <div className={`p-6 rounded-2xl border ${categoryColors[triageResult.category].bg} ${categoryColors[triageResult.category].border}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`p-2 rounded-lg ${categoryColors[triageResult.category].bg}`}>
-                    <span className={`material-symbols-outlined ${categoryColors[triageResult.category].text}`}>
+                    <span translate="no" className={`material-symbols-outlined ${categoryColors[triageResult.category].text} notranslate`}>
                       {categoryColors[triageResult.category].icon}
                     </span>
                   </div>
@@ -325,7 +325,7 @@ export default function SymptomChecker() {
               <div className="space-y-3">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Recommended Actions</h4>
                 <Link href="/dashboard/patient/appointments" className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
-                  <span className="material-symbols-outlined text-primary">video_chat</span>
+                  <span translate="no" className="material-symbols-outlined text-primary notranslate">video_chat</span>
                   <div>
                     <p className="text-sm font-bold">Speak with a GP</p>
                     <p className="text-xs text-slate-400">Book a teleconsultation</p>
@@ -333,7 +333,7 @@ export default function SymptomChecker() {
                   <span className="ml-auto text-primary text-xs font-bold">Book</span>
                 </Link>
                 <Link href="/dashboard/patient/pharmacy" className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
-                  <span className="material-symbols-outlined text-primary">local_pharmacy</span>
+                  <span translate="no" className="material-symbols-outlined text-primary notranslate">local_pharmacy</span>
                   <div>
                     <p className="text-sm font-bold">Find Nearby Pharmacy</p>
                     <p className="text-xs text-slate-400">Order medicines online</p>
@@ -344,7 +344,7 @@ export default function SymptomChecker() {
                   onClick={resetConversation}
                   className="w-full flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors text-left"
                 >
-                  <span className="material-symbols-outlined text-slate-400">refresh</span>
+                  <span translate="no" className="material-symbols-outlined text-slate-400 notranslate">refresh</span>
                   <div>
                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Start New Assessment</p>
                     <p className="text-xs text-slate-400">Check different symptoms</p>
@@ -354,7 +354,7 @@ export default function SymptomChecker() {
             </>
           ) : (
             <div className="p-8 text-center text-slate-400">
-              <span className="material-symbols-outlined text-5xl mb-3 block">symptoms</span>
+              <span translate="no" className="material-symbols-outlined text-5xl mb-3 block notranslate">symptoms</span>
               <p className="text-sm">Your triage result will appear here as you describe your symptoms...</p>
             </div>
           )}
@@ -366,7 +366,7 @@ export default function SymptomChecker() {
               <div className="flex flex-wrap gap-2">
                 {collectedSymptoms.map((s) => (
                   <span key={s} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[11px] font-medium flex items-center gap-1">
-                    {s} <span className="material-symbols-outlined text-[12px] text-primary">check_circle</span>
+                    {s} <span translate="no" className="material-symbols-outlined text-[12px] text-primary notranslate">check_circle</span>
                   </span>
                 ))}
               </div>

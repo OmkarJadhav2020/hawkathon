@@ -67,10 +67,10 @@ export default function AshaMapPage() {
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 md:px-8 py-3 z-30 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center size-10 rounded-xl bg-primary/20 text-primary">
-            <span className="material-symbols-outlined text-2xl">health_and_safety</span>
+            <span translate="no" className="material-symbols-outlined text-2xl notranslate">health_and_safety</span>
           </div>
           <div>
-            <h2 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">GraamSehat</h2>
+            <h2 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white">NearDoc</h2>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Nabha Health Cluster</p>
           </div>
         </div>
@@ -87,16 +87,16 @@ export default function AshaMapPage() {
         {/* Sidebar */}
         <nav className="hidden lg:flex w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 gap-2 flex-shrink-0 z-20 shadow-lg">
           <Link href="/dashboard/asha/map" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white font-semibold">
-            <span className="material-symbols-outlined">map</span><span>Village Map</span>
+            <span translate="no" className="material-symbols-outlined notranslate">map</span><span>Village Map</span>
           </Link>
           <Link href="/dashboard/asha" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300">
-            <span className="material-symbols-outlined">assignment</span><span>Outreach List</span>
+            <span translate="no" className="material-symbols-outlined notranslate">assignment</span><span>Outreach List</span>
           </Link>
           <Link href="/dashboard/patient/consultation" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300">
-            <span className="material-symbols-outlined">medical_services</span><span>Tele-Consults</span>
+            <span translate="no" className="material-symbols-outlined notranslate">medical_services</span><span>Tele-Consults</span>
           </Link>
           <Link href="/dashboard/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300">
-            <span className="material-symbols-outlined">analytics</span><span>Statistics</span>
+            <span translate="no" className="material-symbols-outlined notranslate">analytics</span><span>Statistics</span>
           </Link>
 
           {/* Sync Card */}
@@ -114,7 +114,7 @@ export default function AshaMapPage() {
                 onClick={() => { setSyncing(true); setTimeout(() => setSyncing(false), 2000); }}
                 className="w-full py-2 bg-primary hover:bg-primary/90 transition-all text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1"
               >
-                <span className={`material-symbols-outlined text-sm ${syncing ? "animate-spin" : ""}`}>sync</span>
+                <span translate="no" className={`material-symbols-outlined text-sm ${syncing ? "animate-spin" : ""} notranslate`}>sync</span>
                 {syncing ? "Syncing..." : "SYNC NOW"}
               </button>
               <p className="text-[10px] text-slate-400 text-center">Last synced: Today 09:42 AM</p>
@@ -129,7 +129,7 @@ export default function AshaMapPage() {
           <div className="absolute top-4 left-4 z-[400] pointer-events-auto">
             <div className="bg-white dark:bg-slate-900 p-2 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 w-64 md:w-80">
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <span translate="no" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 notranslate">search</span>
                 <input className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-10 text-sm focus:ring-primary focus:ring-2 py-2.5 outline-none transition-all dark:text-white" placeholder="Find household or village..." type="text" />
               </div>
             </div>
@@ -213,14 +213,14 @@ export default function AshaMapPage() {
               {OUTREACH.map((item) => (
                 <div key={item.name} className={`flex items-center gap-4 p-4 rounded-2xl border-l-4 ${item.priority === "high" ? "bg-red-50 dark:bg-red-900/10 border-l-red-500" : item.priority === "medium" ? "bg-amber-50 dark:bg-amber-900/10 border-l-amber-500" : "bg-slate-50 dark:bg-slate-800 border-l-green-500"} cursor-pointer hover:shadow-md transition-all group`}>
                   <div className={`size-11 rounded-xl ${item.priority === "high" ? "bg-red-500" : item.priority === "medium" ? "bg-amber-500" : "bg-green-500"} flex items-center justify-center shrink-0 shadow-sm`}>
-                    <span className="material-symbols-outlined text-white text-lg">{item.icon}</span>
+                    <span translate="no" className="material-symbols-outlined text-white text-lg notranslate">{item.icon}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">{item.name}</p>
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{item.task}</p>
                   </div>
                   <button className="size-9 rounded-full bg-white dark:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-600 text-slate-500 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
-                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">chevron_right</span>
                   </button>
                 </div>
               ))}
@@ -228,7 +228,7 @@ export default function AshaMapPage() {
             
             <div className="sticky bottom-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur pt-4 mt-2 z-10">
               <Link href="/dashboard/asha" className="w-full py-4 bg-primary text-white font-black rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 hover:bg-primary/90 transition-all hover:-translate-y-0.5">
-                <span className="material-symbols-outlined">add_circle</span>
+                <span translate="no" className="material-symbols-outlined notranslate">add_circle</span>
                 START NEW REGISTRATION
               </Link>
             </div>
@@ -239,26 +239,26 @@ export default function AshaMapPage() {
       {/* Mobile PWA Bottom Nav */}
       <div className="md:hidden flex items-center justify-around bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3 px-2 z-40 flex-shrink-0 safe-area-bottom">
         <Link href="/dashboard/asha/map" className="flex flex-col items-center gap-1 text-primary">
-          <span className="material-symbols-outlined">map</span>
+          <span translate="no" className="material-symbols-outlined notranslate">map</span>
           <span className="text-[10px] font-bold">MAP</span>
         </Link>
         <Link href="/dashboard/asha" className="flex flex-col items-center gap-1 text-slate-400">
-          <span className="material-symbols-outlined">assignment</span>
+          <span translate="no" className="material-symbols-outlined notranslate">assignment</span>
           <span className="text-[10px] font-bold">LIST</span>
         </Link>
         <Link href="/dashboard/asha" className="-mt-8 size-14 rounded-full bg-primary text-white flex items-center justify-center shadow-xl border-4 border-white dark:border-slate-900 hover:scale-105 transition-transform">
-          <span className="material-symbols-outlined text-3xl">add</span>
+          <span translate="no" className="material-symbols-outlined text-3xl notranslate">add</span>
         </Link>
         <button
           onClick={() => setSyncing(true)}
           className="flex flex-col items-center gap-1 text-slate-400 relative"
         >
-          <span className={`material-symbols-outlined ${syncing ? "animate-spin text-primary" : ""}`}>sync</span>
+          <span translate="no" className={`material-symbols-outlined ${syncing ? "animate-spin text-primary" : ""} notranslate`}>sync</span>
           <span className="text-[10px] font-bold">SYNC</span>
           <span className="absolute -top-1 right-0 sm:-right-2 size-4 bg-orange-500 text-white text-[8px] flex items-center justify-center rounded-full font-bold">8</span>
         </button>
         <button className="flex flex-col items-center gap-1 text-slate-400">
-          <span className="material-symbols-outlined">account_circle</span>
+          <span translate="no" className="material-symbols-outlined notranslate">account_circle</span>
           <span className="text-[10px] font-bold">PROFILE</span>
         </button>
       </div>

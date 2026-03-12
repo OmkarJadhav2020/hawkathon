@@ -1,5 +1,5 @@
 /**
- * GraamSehat — Database Seed Script
+ * NearDoc — Database Seed Script
  * Run: npx ts-node prisma/seed.ts   OR   npx tsx prisma/seed.ts
  *
  * Inserts a demo patient, doctor, ASHA worker, pharmacy with stock,
@@ -13,7 +13,7 @@ import { PrismaClient } from "../node_modules/.prisma/client/index.js";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding GraamSehat database...");
+  console.log("🌱 Seeding NearDoc database...");
 
   // ─── 1. Users ─────────────────────────────────────────────────────────────
   const patient = await prisma.user.upsert({

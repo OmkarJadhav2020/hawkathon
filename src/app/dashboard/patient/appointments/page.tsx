@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import LanguageSelector from "@/components/LanguageSelector";
 import { format } from "date-fns";
 
 type Consultation = {
@@ -171,7 +172,7 @@ export default function AppointmentsPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-red-600">cancel</span>
+              <span translate="no" className="material-symbols-outlined text-red-600 notranslate">cancel</span>
             </div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Cancel Appointment?</h2>
             <p className="text-slate-500 text-sm mb-6">This action cannot be undone. The appointment will be permanently cancelled.</p>
@@ -201,7 +202,7 @@ export default function AppointmentsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Reschedule Appointment</h2>
               <button onClick={() => setRescheduleId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                <span className="material-symbols-outlined text-slate-500">close</span>
+                <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">close</span>
               </button>
             </div>
             <p className="text-slate-500 text-sm mb-4">Select a new date and time for your appointment.</p>
@@ -226,8 +227,8 @@ export default function AppointmentsPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
         <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
-          <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
-          <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
+          <Image src="/logo.png" alt="NearDoc Logo" width={56} height={56} className="rounded-xl object-contain shadow-sm" />
+          <h2 className="text-slate-900 dark:text-white text-2xl font-black leading-tight tracking-tight">NearDoc</h2>
         </Link>
         <div className="flex flex-1 justify-end gap-3 items-center">
           <nav className="hidden md:flex gap-6 mr-6">
@@ -236,6 +237,7 @@ export default function AppointmentsPage() {
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/records">Records</Link>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/orders">My Orders</Link>
           </nav>
+          <LanguageSelector />
           {/* Account Avatar */}
           <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
             {typeof window !== "undefined" ? (localStorage.getItem("userName")?.slice(0, 2).toUpperCase() ?? "PT") : "PT"}
@@ -245,7 +247,7 @@ export default function AppointmentsPage() {
             className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
             title="Sign Out"
           >
-            <span className="material-symbols-outlined text-lg">logout</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">logout</span>
           </button>
         </div>
       </header>
@@ -260,7 +262,7 @@ export default function AppointmentsPage() {
             onClick={() => setTab("book")}
             className="flex items-center gap-2 bg-primary text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
           >
-            <span className="material-symbols-outlined">add</span> Book Now
+            <span translate="no" className="material-symbols-outlined notranslate">add</span> Book Now
           </button>
         </div>
 
@@ -270,7 +272,7 @@ export default function AppointmentsPage() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-4xl text-white">ring_volume</span>
+                  <span translate="no" className="material-symbols-outlined text-4xl text-white notranslate">ring_volume</span>
                 </div>
                 <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full animate-ping" />
                 <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full" />
@@ -284,7 +286,7 @@ export default function AppointmentsPage() {
               href={`/dashboard/patient/consultation?id=${activeConsultCard.id}`}
               className="w-full sm:w-auto bg-white text-green-700 font-black px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-xl">videocam</span> JOIN VIDEO CALL
+              <span translate="no" className="material-symbols-outlined text-xl notranslate">videocam</span> JOIN VIDEO CALL
             </Link>
           </div>
         )}
@@ -311,7 +313,7 @@ export default function AppointmentsPage() {
               <div className="space-y-4">
                 {upcoming.filter((a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id)).length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">event_busy</span>
+                    <span translate="no" className="material-symbols-outlined text-4xl text-slate-300 mb-2 block notranslate">event_busy</span>
                     <p className="text-slate-500">No upcoming appointments</p>
                     <button onClick={() => setTab("book")} className="mt-4 text-primary font-bold text-sm hover:underline">Book one now</button>
                   </div>
@@ -332,7 +334,7 @@ export default function AppointmentsPage() {
                               <h3 className="font-bold text-slate-900 dark:text-white text-lg">{apt.doctor.name}</h3>
                               <p className="text-slate-500 text-sm">{apt.doctor.doctorProfile?.specialty || "General Physician"} • {format(d, "hh:mm a")}</p>
                               <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">monitor_heart</span> {apt.connectionMode} Consultation
+                                <span translate="no" className="material-symbols-outlined text-sm notranslate">monitor_heart</span> {apt.connectionMode} Consultation
                               </p>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase ${apt.status === "CONFIRMED" || apt.status === "PENDING" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-amber-100 text-amber-700"}`}>
@@ -342,20 +344,20 @@ export default function AppointmentsPage() {
                           <div className="flex gap-3 mt-4 flex-wrap">
                             {apt.connectionMode === "VIDEO" && apt.status !== "COMPLETED" && (
                               <Link href={`/dashboard/patient/consultation?id=${apt.id}`} className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg text-sm hover:opacity-90 transition-all">
-                                <span className="material-symbols-outlined text-sm">videocam</span> Join Call
+                                <span translate="no" className="material-symbols-outlined text-sm notranslate">videocam</span> Join Call
                               </Link>
                             )}
                             <button
                               onClick={() => { setRescheduleId(apt.id); setRescheduleDate(""); }}
                               className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                             >
-                              <span className="material-symbols-outlined text-sm">edit_calendar</span> Reschedule
+                              <span translate="no" className="material-symbols-outlined text-sm notranslate">edit_calendar</span> Reschedule
                             </button>
                             <button
                               onClick={() => setCancelId(apt.id)}
                               className="flex items-center gap-2 px-4 py-2 border border-red-100 dark:border-red-900/30 text-red-500 font-bold rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
                             >
-                              <span className="material-symbols-outlined text-sm">cancel</span> Cancel
+                              <span translate="no" className="material-symbols-outlined text-sm notranslate">cancel</span> Cancel
                             </button>
                           </div>
                         </div>
@@ -371,7 +373,7 @@ export default function AppointmentsPage() {
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 {past.length === 0 ? (
                   <div className="text-center py-12">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">history</span>
+                    <span translate="no" className="material-symbols-outlined text-4xl text-slate-300 mb-2 block notranslate">history</span>
                     <p className="text-slate-500">No past consultations found.</p>
                   </div>
                 ) : (
@@ -406,7 +408,7 @@ export default function AppointmentsPage() {
               <div className="grid gap-4">
                 {doctors.length === 0 ? (
                   <div className="text-center py-12 text-slate-400">
-                    <span className="material-symbols-outlined text-4xl mb-2 block">person_off</span>
+                    <span translate="no" className="material-symbols-outlined text-4xl mb-2 block notranslate">person_off</span>
                     <p>No doctors available right now.</p>
                   </div>
                 ) : (

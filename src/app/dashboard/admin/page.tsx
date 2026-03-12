@@ -86,12 +86,12 @@ function AddDoctorModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary">stethoscope</span>
+              <span translate="no" className="material-symbols-outlined text-primary notranslate">stethoscope</span>
             </div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add New Doctor</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <span className="material-symbols-outlined text-slate-500">close</span>
+            <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">close</span>
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -174,12 +174,12 @@ function AddPatientModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <span className="material-symbols-outlined text-blue-600">person_add</span>
+              <span translate="no" className="material-symbols-outlined text-blue-600 notranslate">person_add</span>
             </div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Register New Patient</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-            <span className="material-symbols-outlined text-slate-500">close</span>
+            <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">close</span>
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -328,8 +328,8 @@ export default function AdminDashboard() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
-                <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">GraamSehat</span>
+                <Image src="/logo.png" alt="NearDoc Logo" width={32} height={32} className="rounded-lg object-contain" />
+                <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">NearDoc</span>
               </div>
               <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-800 dark:text-slate-200">Admin</span>
             </div>
@@ -339,7 +339,7 @@ export default function AdminDashboard() {
                 onClick={() => setShowAddDoctor(true)}
                 className="hidden md:flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm"
               >
-                <span className="material-symbols-outlined text-sm">stethoscope</span>
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">stethoscope</span>
                 Add Doctor
               </button>
               {/* Add Patient Button */}
@@ -347,7 +347,7 @@ export default function AdminDashboard() {
                 onClick={() => setShowAddPatient(true)}
                 className="hidden md:flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-xl text-sm font-bold hover:border-primary hover:text-primary transition-all"
               >
-                <span className="material-symbols-outlined text-sm">person_add</span>
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">person_add</span>
                 Add Patient
               </button>
 
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
                   onClick={() => { setShowNotifs((v) => !v); setShowAccountMenu(false); }}
                   className="relative p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all"
                 >
-                  <span className="material-symbols-outlined">notifications</span>
+                  <span translate="no" className="material-symbols-outlined notranslate">notifications</span>
                   {notifications.length > 0 && (
                     <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
                       {notifications.length}
@@ -372,7 +372,7 @@ export default function AdminDashboard() {
                     </div>
                     {notifications.length === 0 ? (
                       <div className="py-8 text-center">
-                        <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">notifications_none</span>
+                        <span translate="no" className="material-symbols-outlined text-3xl text-slate-300 block mb-2 notranslate">notifications_none</span>
                         <p className="text-sm text-slate-400">No recent activity</p>
                       </div>
                     ) : (
@@ -380,7 +380,7 @@ export default function AdminDashboard() {
                         {notifications.map((n) => (
                           <div key={n.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.isEmergency ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"}`}>
-                              <span className="material-symbols-outlined text-sm">{n.isEmergency ? "pending" : "check_circle"}</span>
+                              <span translate="no" className="material-symbols-outlined text-sm notranslate">{n.isEmergency ? "pending" : "check_circle"}</span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{n.title}</p>
@@ -415,21 +415,21 @@ export default function AdminDashboard() {
                         onClick={() => { setShowAddDoctor(true); setShowAccountMenu(false); }}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
                       >
-                        <span className="material-symbols-outlined text-slate-400 text-lg">stethoscope</span>
+                        <span translate="no" className="material-symbols-outlined text-slate-400 text-lg notranslate">stethoscope</span>
                         Add Doctor
                       </button>
                       <button
                         onClick={() => { setShowAddPatient(true); setShowAccountMenu(false); }}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
                       >
-                        <span className="material-symbols-outlined text-slate-400 text-lg">person_add</span>
+                        <span translate="no" className="material-symbols-outlined text-slate-400 text-lg notranslate">person_add</span>
                         Add Patient
                       </button>
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 font-semibold transition-colors mt-1"
                       >
-                        <span className="material-symbols-outlined text-lg">logout</span>
+                        <span translate="no" className="material-symbols-outlined text-lg notranslate">logout</span>
                         Sign Out
                       </button>
                     </div>
@@ -447,13 +447,13 @@ export default function AdminDashboard() {
             <div className="flex gap-2">
               {/* Mobile Add buttons */}
               <button onClick={() => setShowAddDoctor(true)} className="md:hidden bg-primary text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">stethoscope</span> Add Doctor
+                <span translate="no" className="material-symbols-outlined text-xs notranslate">stethoscope</span> Add Doctor
               </button>
               <button onClick={() => setShowAddPatient(true)} className="md:hidden border border-slate-200 dark:border-slate-700 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 text-slate-700 dark:text-slate-300">
-                <span className="material-symbols-outlined text-xs">person_add</span> Add Patient
+                <span translate="no" className="material-symbols-outlined text-xs notranslate">person_add</span> Add Patient
               </button>
               <button onClick={() => window.print()} className="bg-primary text-white px-3 py-1 rounded text-sm font-medium flex items-center gap-1 hover:opacity-90">
-                <span className="material-symbols-outlined text-sm">download</span> Export
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">download</span> Export
               </button>
             </div>
           </div>
@@ -566,7 +566,7 @@ export default function AdminDashboard() {
                     onClick={() => setShowAddDoctor(true)}
                     className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
                   >
-                    <span className="material-symbols-outlined text-sm">add</span> Add
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">add</span> Add
                   </button>
                 </div>
                 <div className="space-y-3 flex-1">
@@ -588,7 +588,7 @@ export default function AdminDashboard() {
                   ))}
                   {(stats?.doctors ?? []).length === 0 && (
                     <div className="text-center py-6">
-                      <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">stethoscope</span>
+                      <span translate="no" className="material-symbols-outlined text-3xl text-slate-300 block mb-2 notranslate">stethoscope</span>
                       <p className="text-sm text-slate-400 mb-3">No doctors added yet</p>
                       <button onClick={() => setShowAddDoctor(true)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Add First Doctor</button>
                     </div>
@@ -622,7 +622,7 @@ export default function AdminDashboard() {
                             <td className="px-4 py-3 text-slate-500 text-xs">{w.villages.join(", ") || "—"}</td>
                             <td className="px-4 py-3 text-slate-400 text-xs">{w.lastSync ? formatDistanceToNow(new Date(w.lastSync), { addSuffix: true }) : "Never"}</td>
                             <td className="px-4 py-3">
-                              <span className={`material-symbols-outlined text-sm ${w.isOnline ? "text-green-500" : "text-slate-400"}`}>
+                              <span translate="no" className={`material-symbols-outlined text-sm ${w.isOnline ? "text-green-500" : "text-slate-400"} notranslate`}>
                                 {w.isOnline ? "check_circle" : "circle"}
                               </span>
                             </td>

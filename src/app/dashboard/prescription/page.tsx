@@ -116,9 +116,9 @@ function PrescriptionContent() {
   };
 
   const handleShare = async () => {
-    const text = `GraamSehat Prescription — ${rx?.diagnosis ?? ""}\nMedicines: ${rx?.medicines?.map(m => m.name).join(", ") ?? ""}\nDoctor: ${rx?.doctorName ?? ""}`;
+    const text = `NearDoc Prescription — ${rx?.diagnosis ?? ""}\nMedicines: ${rx?.medicines?.map(m => m.name).join(", ") ?? ""}\nDoctor: ${rx?.doctorName ?? ""}`;
     if (navigator.share) {
-      await navigator.share({ title: "GraamSehat Prescription", text });
+      await navigator.share({ title: "NearDoc Prescription", text });
     } else {
       await navigator.clipboard.writeText(text);
       showToast("Prescription details copied to clipboard!");
@@ -162,7 +162,7 @@ function PrescriptionContent() {
   if (notFound || !rx) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center p-8">
-        <span className="material-symbols-outlined text-6xl text-slate-300">receipt_long</span>
+        <span translate="no" className="material-symbols-outlined text-6xl text-slate-300 notranslate">receipt_long</span>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Prescription Not Found</h1>
         <p className="text-slate-500">This prescription may not exist or has been removed.</p>
         <Link href="/dashboard/patient" className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:opacity-90">
@@ -178,7 +178,7 @@ function PrescriptionContent() {
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+          <span translate="no" className="material-symbols-outlined text-green-400 notranslate">check_circle</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
@@ -189,12 +189,12 @@ function PrescriptionContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-                <span className="material-symbols-outlined">arrow_back</span>
+                <span translate="no" className="material-symbols-outlined notranslate">arrow_back</span>
               </Link>
               <div className="bg-primary p-1.5 rounded-lg text-white">
-                <span className="material-symbols-outlined text-2xl">medical_services</span>
+                <span translate="no" className="material-symbols-outlined text-2xl notranslate">medical_services</span>
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GraamSehat</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">NearDoc</h1>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -202,21 +202,21 @@ function PrescriptionContent() {
                 onClick={() => window.print()}
                 title="Print"
               >
-                <span className="material-symbols-outlined">print</span>
+                <span translate="no" className="material-symbols-outlined notranslate">print</span>
               </button>
               <button
                 onClick={handleDownload}
                 className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
                 title="Download"
               >
-                <span className="material-symbols-outlined">download</span>
+                <span translate="no" className="material-symbols-outlined notranslate">download</span>
               </button>
               <button
                 onClick={handleShare}
                 className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
                 title="Share"
               >
-                <span className="material-symbols-outlined">share</span>
+                <span translate="no" className="material-symbols-outlined notranslate">share</span>
               </button>
               <button
                 onClick={sendPrescriptionSMS}
@@ -227,7 +227,7 @@ function PrescriptionContent() {
                   "bg-primary text-white hover:opacity-90"
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">
+                <span translate="no" className="material-symbols-outlined text-lg notranslate">
                   {smsStatus === "sending" ? "progress_activity" : smsStatus === "sent" ? "check_circle" : smsStatus === "error" ? "error" : "sms"}
                 </span>
                 <span>{smsStatus === "sending" ? "Sending..." : smsStatus === "sent" ? "SMS Sent!" : smsStatus === "error" ? "Failed – Retry" : "Send SMS"}</span>
@@ -261,7 +261,7 @@ function PrescriptionContent() {
           <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-6 mb-8 flex items-center justify-between gap-6 shadow-sm">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-blue-600">smart_toy</span>
+                <span translate="no" className="material-symbols-outlined text-blue-600 notranslate">smart_toy</span>
                 <h3 className="font-bold text-slate-900 dark:text-white">AI Health Assistant</h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Have questions about your prescription or dosage? Speak directly with our AI voice assistant for guided help.</p>
@@ -304,7 +304,7 @@ function PrescriptionContent() {
                 {(Array.isArray(rx.medicines) ? rx.medicines : []).map((med, i) => (
                   <div key={i} className="flex gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                     <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined">pill</span>
+                      <span translate="no" className="material-symbols-outlined notranslate">pill</span>
                     </div>
                     <div className="flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -338,7 +338,7 @@ function PrescriptionContent() {
             {rx.instructions && (
               <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl p-5">
                 <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-amber-500 mt-0.5">info</span>
+                  <span translate="no" className="material-symbols-outlined text-amber-500 mt-0.5 notranslate">info</span>
                   <div>
                     <h4 className="font-bold text-amber-800 dark:text-amber-300 text-sm mb-1">Doctor's Instructions</h4>
                     <p className="text-amber-700 dark:text-amber-400 text-sm leading-relaxed">{rx.instructions}</p>
@@ -354,7 +354,7 @@ function PrescriptionContent() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
               <h3 className="font-bold text-slate-700 dark:text-slate-300 text-xs uppercase tracking-widest mb-3">SMS Delivery</h3>
               <div className={`flex items-center gap-3 p-3 rounded-xl ${rx.smsDelivered ? "bg-green-50 border border-green-100" : "bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"}`}>
-                <span className={`material-symbols-outlined ${rx.smsDelivered ? "text-green-500" : "text-slate-400"}`}>
+                <span translate="no" className={`material-symbols-outlined ${rx.smsDelivered ? "text-green-500" : "text-slate-400"} notranslate`}>
                   {rx.smsDelivered ? "check_circle" : "sms"}
                 </span>
                 <div>
@@ -369,7 +369,7 @@ function PrescriptionContent() {
                 disabled={smsStatus === "sending" || smsStatus === "sent"}
                 className="mt-3 w-full bg-primary text-white font-bold py-2.5 rounded-xl text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined text-sm">sms</span>
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">sms</span>
                 {smsStatus === "sent" ? "SMS Sent!" : "Resend SMS"}
               </button>
             </div>
@@ -400,7 +400,7 @@ function PrescriptionContent() {
                     </div>
                     <div className="flex gap-2">
                       <a href={`tel:${pharmacy.phone}`} className="px-3 py-1.5 text-xs font-bold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">call</span>
+                        <span translate="no" className="material-symbols-outlined text-sm notranslate">call</span>
                         Call
                       </a>
                     </div>
@@ -412,7 +412,7 @@ function PrescriptionContent() {
                     disabled={ordering}
                     className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
                   >
-                    <span className="material-symbols-outlined text-sm">shopping_bag</span>
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">shopping_bag</span>
                     {ordering ? "Ordering..." : "Order Pickup"}
                   </button>
                   <button
@@ -420,7 +420,7 @@ function PrescriptionContent() {
                     disabled={ordering}
                     className="border border-primary text-primary hover:bg-primary/5 disabled:opacity-50 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
                   >
-                    <span className="material-symbols-outlined text-sm">local_shipping</span>
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">local_shipping</span>
                     {ordering ? "Ordering..." : "Home Delivery"}
                   </button>
                 </div>

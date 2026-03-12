@@ -516,7 +516,7 @@ function ConsultationRoomContent() {
             <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
               <h3 className="font-bold text-lg text-white">Confirm Delivery Address</h3>
               <button onClick={() => setAddressModal(null)} className="text-slate-400 hover:text-white">
-                <span className="material-symbols-outlined">close</span>
+                <span translate="no" className="material-symbols-outlined notranslate">close</span>
               </button>
             </div>
             <form onSubmit={confirmLiveOrder} className="p-6">
@@ -542,8 +542,8 @@ function ConsultationRoomContent() {
       <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-6 h-14 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">health_and_safety</span>
-            <span className="text-white font-bold tracking-tight hidden sm:inline">GraamSehat</span>
+            <span translate="no" className="material-symbols-outlined text-primary notranslate">health_and_safety</span>
+            <span className="text-white font-bold tracking-tight hidden sm:inline">NearDoc</span>
           </div>
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
           <div>
@@ -565,7 +565,7 @@ function ConsultationRoomContent() {
           {/* Connection quality badge */}
           {bitrate !== null && (
             <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${qc.badge} flex items-center gap-1`}>
-              <span className="material-symbols-outlined text-xs">{qc.icon}</span>
+              <span translate="no" className="material-symbols-outlined text-xs notranslate">{qc.icon}</span>
               {qc.label} · {bitrate}kbps
             </span>
           )}
@@ -580,7 +580,7 @@ function ConsultationRoomContent() {
             disabled={endingCall}
             className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors text-sm disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-lg">{endingCall ? "hourglass_empty" : "call_end"}</span>
+            <span translate="no" className="material-symbols-outlined text-lg notranslate">{endingCall ? "hourglass_empty" : "call_end"}</span>
             <span className="hidden sm:inline">{endingCall ? "Ending..." : "End Call"}</span>
           </button>
         </div>
@@ -607,11 +607,11 @@ function ConsultationRoomContent() {
                   callMode === "connecting" || callMode === "waiting" ? "bg-primary/20 ring-primary/30 animate-pulse" :
                   "bg-slate-700 ring-slate-600"
                 }`}>
-                  <span className={`material-symbols-outlined text-5xl ${
+                  <span translate="no" className={`material-symbols-outlined text-5xl ${
                     callMode === "audio" ? "text-amber-400" :
                     callMode === "connecting" || callMode === "waiting" ? "text-primary" :
                     "text-slate-400"
-                  }`}>
+                  } notranslate`}>
                     {callMode === "audio" ? "mic" : callMode === "connecting" || callMode === "waiting" ? "person" : "chat"}
                   </span>
                 </div>
@@ -635,7 +635,7 @@ function ConsultationRoomContent() {
               <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               {!isCamOn && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                  <span className="material-symbols-outlined text-slate-500">videocam_off</span>
+                  <span translate="no" className="material-symbols-outlined text-slate-500 notranslate">videocam_off</span>
                 </div>
               )}
               <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-black/50 px-1 py-0.5 rounded">
@@ -652,14 +652,14 @@ function ConsultationRoomContent() {
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isMicOn ? "bg-slate-700 hover:bg-slate-600 text-white" : "bg-red-600 text-white"}`}
                 title={isMicOn ? "Mute" : "Unmute"}
               >
-                <span className="material-symbols-outlined text-lg">{isMicOn ? "mic" : "mic_off"}</span>
+                <span translate="no" className="material-symbols-outlined text-lg notranslate">{isMicOn ? "mic" : "mic_off"}</span>
               </button>
               <button
                 onClick={toggleCam}
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isCamOn ? "bg-slate-700 hover:bg-slate-600 text-white" : "bg-red-600 text-white"}`}
                 title={isCamOn ? "Camera off" : "Camera on"}
               >
-                <span className="material-symbols-outlined text-lg">{isCamOn ? "videocam" : "videocam_off"}</span>
+                <span translate="no" className="material-symbols-outlined text-lg notranslate">{isCamOn ? "videocam" : "videocam_off"}</span>
               </button>
               <div className="w-px h-8 bg-slate-600" />
               <button
@@ -667,7 +667,7 @@ function ConsultationRoomContent() {
                 className="w-11 h-11 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors"
                 title="End call"
               >
-                <span className="material-symbols-outlined text-lg">call_end</span>
+                <span translate="no" className="material-symbols-outlined text-lg notranslate">call_end</span>
               </button>
             </div>
           </div>
@@ -709,7 +709,7 @@ function ConsultationRoomContent() {
                     : "bg-primary/20 hover:bg-primary/30 text-primary"
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">{showPrescribePanel ? "close" : "prescriptions"}</span>
+                <span translate="no" className="material-symbols-outlined text-sm notranslate">{showPrescribePanel ? "close" : "prescriptions"}</span>
                 {showPrescribePanel ? "Close Prescription Pad" : "✏️ Write & Send Prescription"}
               </button>
             )}
@@ -718,7 +718,7 @@ function ConsultationRoomContent() {
           {/* Chat */}
           <div className="flex flex-col flex-1 min-h-0">
             <div className="px-4 py-2.5 border-b border-slate-800 flex items-center gap-2 shrink-0">
-              <span className="material-symbols-outlined text-slate-400 text-sm">lock</span>
+              <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">lock</span>
               <span className="text-xs font-bold text-slate-400">Secure Chat</span>
               {callMode === "chat" && (
                 <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-900/40">
@@ -735,7 +735,7 @@ function ConsultationRoomContent() {
               {livePrescriptions.length > 0 && (
                 <div className="w-full bg-primary/10 border border-primary/20 rounded-xl p-3 mb-4 space-y-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-primary text-sm">prescriptions</span>
+                    <span translate="no" className="material-symbols-outlined text-primary text-sm notranslate">prescriptions</span>
                     <h4 className="text-xs font-bold text-primary uppercase">Live Prescriptions</h4>
                   </div>
                   {livePrescriptions.map((med, i) => (
@@ -748,7 +748,7 @@ function ConsultationRoomContent() {
                         <div className="flex shrink-0">
                           {orderedLive.includes(med.name) ? (
                             <span className="text-xs font-bold text-green-500 bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20 flex items-center gap-1 w-full justify-center">
-                              <span className="material-symbols-outlined text-[14px]">check_circle</span> Ordered
+                              <span translate="no" className="material-symbols-outlined text-[14px] notranslate">check_circle</span> Ordered
                             </span>
                           ) : (
                             <button
@@ -791,11 +791,11 @@ function ConsultationRoomContent() {
               <div className="border-t border-slate-700 bg-slate-900 p-4 space-y-3 shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-sm">prescriptions</span>
+                    <span translate="no" className="material-symbols-outlined text-primary text-sm notranslate">prescriptions</span>
                     <span className="text-xs font-bold text-primary uppercase tracking-wider">Add Medicine to Prescription</span>
                   </div>
                   <button onClick={() => setShowPrescribePanel(false)} className="text-slate-500 hover:text-white transition-colors">
-                    <span className="material-symbols-outlined text-sm">close</span>
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">close</span>
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -841,7 +841,7 @@ function ConsultationRoomContent() {
                   disabled={!prescriptionForm.name}
                   className="w-full bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs py-2.5 rounded-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-sm">send</span>
+                  <span translate="no" className="material-symbols-outlined text-sm notranslate">send</span>
                   Send Prescription to Patient
                 </button>
               </div>
@@ -856,7 +856,7 @@ function ConsultationRoomContent() {
                   }`}
                   title={showPrescribePanel ? "Close Prescription Pad" : "Open Prescription Pad"}
                 >
-                  <span className="material-symbols-outlined text-lg">medical_services</span>
+                  <span translate="no" className="material-symbols-outlined text-lg notranslate">medical_services</span>
                 </button>
               )}
               <input
@@ -871,7 +871,7 @@ function ConsultationRoomContent() {
                 disabled={!inputText.trim()}
                 className="bg-primary hover:bg-primary/90 disabled:opacity-40 text-white w-10 h-10 flex items-center justify-center rounded-xl transition-all"
               >
-                <span className="material-symbols-outlined text-lg">send</span>
+                <span translate="no" className="material-symbols-outlined text-lg notranslate">send</span>
               </button>
             </div>
           </div>

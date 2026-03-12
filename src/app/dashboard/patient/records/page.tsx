@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { QRCodeCanvas } from "qrcode.react";
 import Image from "next/image";
-import { format } from "date-fns";
+import Link from "next/link";
+import LanguageSelector from "@/components/LanguageSelector";
 import QRCode from "qrcode";
+import { format } from "date-fns";
 
 type Patient = {
   id: string;
@@ -145,8 +147,8 @@ export default function HealthRecordsPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
         <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
-          <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
-          <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
+          <Image src="/logo.png" alt="NearDoc Logo" width={56} height={56} className="rounded-xl object-contain shadow-sm" />
+          <h2 className="text-slate-900 dark:text-white text-2xl font-black leading-tight tracking-tight">NearDoc</h2>
         </Link>
         <div className="flex flex-1 justify-end gap-3 items-center">
           <nav className="hidden md:flex gap-6 mr-6">
@@ -155,6 +157,7 @@ export default function HealthRecordsPage() {
             <a className="text-sm font-semibold text-primary border-b-2 border-primary py-5" href="#">Records</a>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/orders">My Orders</Link>
           </nav>
+          <LanguageSelector />
           {/* Account Avatar */}
           <div className="relative" ref={accountRef}>
             <button
@@ -172,13 +175,13 @@ export default function HealthRecordsPage() {
                 </div>
                 <div className="p-2">
                   <Link href="/dashboard/patient/records" onClick={() => setShowAccountMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-primary font-semibold transition-colors">
-                    <span className="material-symbols-outlined text-primary text-lg">folder_open</span> Health Records
+                    <span translate="no" className="material-symbols-outlined text-primary text-lg notranslate">folder_open</span> Health Records
                   </Link>
                   <Link href="/dashboard/patient/orders" onClick={() => setShowAccountMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors">
-                    <span className="material-symbols-outlined text-slate-400 text-lg">receipt_long</span> My Orders
+                    <span translate="no" className="material-symbols-outlined text-slate-400 text-lg notranslate">receipt_long</span> My Orders
                   </Link>
                   <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 font-semibold transition-colors mt-1">
-                    <span className="material-symbols-outlined text-lg">logout</span> Sign Out
+                    <span translate="no" className="material-symbols-outlined text-lg notranslate">logout</span> Sign Out
                   </button>
                 </div>
               </div>
@@ -192,7 +195,7 @@ export default function HealthRecordsPage() {
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/patient" className="flex items-center justify-center w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">arrow_back</span>
+              <span translate="no" className="material-symbols-outlined text-slate-600 dark:text-slate-400 notranslate">arrow_back</span>
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Health Records</h1>
@@ -201,7 +204,7 @@ export default function HealthRecordsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => window.print()} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-              <span className="material-symbols-outlined text-lg">picture_as_pdf</span> Export PDF
+              <span translate="no" className="material-symbols-outlined text-lg notranslate">picture_as_pdf</span> Export PDF
             </button>
           </div>
         </div>
@@ -214,12 +217,12 @@ export default function HealthRecordsPage() {
           <section className="md:col-span-7 bg-gradient-to-br from-slate-50 to-emerald-50/40 dark:from-slate-900 dark:to-emerald-900/10 border border-primary/20 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-primary font-bold text-lg">GraamSehat Health Card</h2>
+                <h2 className="text-primary font-bold text-lg">NearDoc Health Card</h2>
                 <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
                   Offline accessible
                 </span>
               </div>
-              <span className="material-symbols-outlined text-primary/40 text-4xl">contactless</span>
+              <span translate="no" className="material-symbols-outlined text-primary/40 text-4xl notranslate">contactless</span>
             </div>
 
             <div className="mt-6 flex flex-col sm:flex-row gap-6 items-start">
@@ -228,7 +231,7 @@ export default function HealthRecordsPage() {
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="Patient QR Code" className="w-24 h-24" />
                 ) : (
-                  <span className="material-symbols-outlined text-primary text-4xl">qr_code_2</span>
+                  <span translate="no" className="material-symbols-outlined text-primary text-4xl notranslate">qr_code_2</span>
                 )}
               </div>
               {/* Info Grid */}
@@ -254,18 +257,18 @@ export default function HealthRecordsPage() {
                   if (qrDataUrl) {
                     const link = document.createElement("a");
                     link.href = qrDataUrl;
-                    link.download = `graamsehat-card-${patient?.id}.png`;
+                    link.download = `neardoc-card-${patient?.id}.png`;
                     link.click();
                   }
                 }} className="bg-primary hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">download</span> Save to Phone
+                  <span translate="no" className="material-symbols-outlined text-lg notranslate">download</span> Save to Phone
                 </button>
                 <button onClick={() => window.print()} className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 transition-colors shadow-sm flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">print</span> Print
+                  <span translate="no" className="material-symbols-outlined text-lg notranslate">print</span> Print
                 </button>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-primary text-base">check_circle</span>
+                <span translate="no" className="material-symbols-outlined text-primary text-base notranslate">check_circle</span>
                 <span className="text-xs text-slate-500 font-medium">Scan at any clinic without internet</span>
               </div>
             </div>
@@ -274,7 +277,7 @@ export default function HealthRecordsPage() {
           {/* Allergies & Info */}
           <section className="md:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
             <h2 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-slate-400">clinical_notes</span> Patient Info
+              <span translate="no" className="material-symbols-outlined text-slate-400 notranslate">clinical_notes</span> Patient Info
             </h2>
             <div className="space-y-3 mb-6">
               {[
@@ -294,7 +297,7 @@ export default function HealthRecordsPage() {
               <div className="flex flex-wrap gap-2">
                 {patient?.allergies?.length ? patient.allergies.map((a) => (
                   <span key={a} className="flex items-center gap-1 px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900 rounded-full text-xs font-bold">
-                    <span className="material-symbols-outlined text-sm">warning</span> {a}
+                    <span translate="no" className="material-symbols-outlined text-sm notranslate">warning</span> {a}
                   </span>
                 )) : (
                   <span className="text-sm text-slate-400">No known allergies</span>
@@ -308,7 +311,7 @@ export default function HealthRecordsPage() {
         {healthRecords.length > 0 && (
           <div className="mb-8">
             <h2 className="font-bold text-slate-800 dark:text-white text-lg mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-slate-400">folder_open</span> Documents & Lab Reports
+              <span translate="no" className="material-symbols-outlined text-slate-400 notranslate">folder_open</span> Documents & Lab Reports
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {healthRecords.map((rec) => (
@@ -318,7 +321,7 @@ export default function HealthRecordsPage() {
                   className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 flex gap-4 items-start hover:border-primary/40 hover:shadow-md transition-all group cursor-pointer"
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${TYPE_COLORS[rec.type] ?? TYPE_COLORS.GENERAL}`}>
-                    <span className="material-symbols-outlined text-lg">{TYPE_ICONS[rec.type] ?? "description"}</span>
+                    <span translate="no" className="material-symbols-outlined text-lg notranslate">{TYPE_ICONS[rec.type] ?? "description"}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-800 dark:text-white text-sm truncate group-hover:text-primary transition-colors">{rec.title}</p>
@@ -326,7 +329,7 @@ export default function HealthRecordsPage() {
                     {rec.doctorName && <p className="text-xs text-slate-400 mt-1">By {rec.doctorName}</p>}
                     <p className="text-[10px] text-slate-400 mt-1">{format(new Date(rec.createdAt), "dd MMM yyyy")}</p>
                   </div>
-                  <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors text-lg shrink-0">chevron_right</span>
+                  <span translate="no" className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors text-lg shrink-0 notranslate">chevron_right</span>
                 </Link>
               ))}
             </div>
@@ -338,7 +341,7 @@ export default function HealthRecordsPage() {
           <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800">
             <h2 className="font-bold text-slate-800 dark:text-white text-lg">Consultation History</h2>
             <div className="relative max-w-xs w-full">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+              <span translate="no" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 notranslate">search</span>
               <input
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-primary outline-none transition-all"
                 placeholder="Search records..."

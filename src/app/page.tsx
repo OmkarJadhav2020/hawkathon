@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const TEST_CREDENTIALS = [
   { role: "patient" as const, phone: "7767827080", name: "Rajesh Kumar", emoji: "🏥" },
@@ -81,18 +82,17 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-teal-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Branding */}
+        {/* Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-white mb-4 shadow-xl shadow-primary/30">
-            <span className="material-symbols-outlined text-3xl">health_and_safety</span>
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">GraamSehat</h1>
+          <Image src="/logo.png" alt="NearDoc Logo" width={112} height={112} className="mx-auto rounded-3xl shadow-xl shadow-primary/20 mb-5" />
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">NearDoc</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Rural Health. Digitally Connected.</p>
         </div>
 
         {/* Test Credentials Panel */}
         <div className="mb-5 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800 p-4">
           <p className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-sm">lab_profile</span>
+            <span translate="no" className="material-symbols-outlined text-sm notranslate">lab_profile</span>
             Test Credentials — Click to auto-fill
           </p>
           <div className="grid grid-cols-1 gap-2">
@@ -111,7 +111,7 @@ export default function LoginPage() {
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">{cred.name}</p>
                   <p className="text-[10px] text-slate-500 capitalize">{cred.role} · 📞 {cred.phone}</p>
                 </div>
-                <span className="material-symbols-outlined text-slate-400 text-sm">arrow_forward</span>
+                <span translate="no" className="material-symbols-outlined text-slate-400 text-sm notranslate">arrow_forward</span>
               </button>
             ))}
           </div>
@@ -157,7 +157,7 @@ export default function LoginPage() {
           {/* Error */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-start gap-2">
-              <span className="material-symbols-outlined text-sm mt-0.5">error</span>
+              <span translate="no" className="material-symbols-outlined text-sm mt-0.5 notranslate">error</span>
               <span>{error}</span>
             </div>
           )}
@@ -168,14 +168,14 @@ export default function LoginPage() {
             className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2"
           >
             {loading
-              ? <><span className="material-symbols-outlined text-sm animate-spin">progress_activity</span> Signing in...</>
-              : <><span className="material-symbols-outlined text-sm">login</span> Continue to Dashboard</>
+              ? <><span translate="no" className="material-symbols-outlined text-sm animate-spin notranslate">progress_activity</span> Signing in...</>
+              : <><span translate="no" className="material-symbols-outlined text-sm notranslate">login</span> Continue to Dashboard</>
             }
           </button>
         </div>
 
         <p className="text-center text-[11px] text-slate-400 mt-5">
-          © 2024 GraamSehat · Nabha Civil Hospital Trust · v1.0 Beta
+          © 2024 NearDoc · Nabha Civil Hospital Trust · v1.0 Beta
         </p>
       </div>
     </div>
