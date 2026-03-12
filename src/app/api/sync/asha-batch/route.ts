@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // POST /api/sync/asha-batch
 // Registers patients from an ASHA camp or direct registration
 // Body: { ashaWorkerId, campId, campDate, village, records: [{patientName, phone, gender, bloodGroup, dateOfBirth, vitals, symptoms, notes}] }
