@@ -233,7 +233,7 @@ export default function AppointmentsPage() {
             <span className="text-xl font-bold tracking-tight">GraamSehat</span>
           </div>
           <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
-            PT
+            {typeof window !== "undefined" ? (localStorage.getItem("userName")?.slice(0, 2).toUpperCase() ?? "PT") : "PT"}
           </div>
         </div>
       </header>

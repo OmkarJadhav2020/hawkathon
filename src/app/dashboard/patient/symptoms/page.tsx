@@ -249,8 +249,25 @@ export default function SymptomChecker() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+          {/* Input & Voice Agent */}
+          <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+            {/* AI Voice Agent (ElevenLabs) */}
+            <div className="mb-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-blue-600">smart_toy</span>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">Speak to AI Health Assistant</h3>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">Prefer speaking? Tap the widget to start a live voice conversation about your symptoms.</p>
+              </div>
+              
+              <div className="shrink-0 h-[60px] w-auto relative z-10">
+                {/* @ts-expect-error Custom element from external script */}
+                <elevenlabs-convai agent-id="agent_3301kkhxz86cfnjr4w81kfh18917"></elevenlabs-convai>
+              </div>
+              <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+            </div>
+
             <div className="relative flex items-center">
               <input
                 type="text"
@@ -258,7 +275,7 @@ export default function SymptomChecker() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
                 className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-4 pl-4 pr-14 text-sm focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-slate-100 outline-none"
-                placeholder="Type your symptoms here..."
+                placeholder="Or type your symptoms here..."
                 disabled={loading}
               />
               <button
@@ -269,8 +286,8 @@ export default function SymptomChecker() {
                 <span className="material-symbols-outlined">send</span>
               </button>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
-              <span className="material-symbols-outlined text-sm">info</span>
+            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-slate-400">
+              <span className="material-symbols-outlined text-[12px]">info</span>
               <p>This AI tool is for informational purposes only, not a medical diagnosis.</p>
             </div>
           </div>

@@ -477,13 +477,13 @@ export default function DoctorDashboard() {
                         <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">medication</span>
                         <p className="text-slate-500 text-sm mb-4">Create a new digital prescription for this patient.</p>
                         <div className="flex flex-col gap-3 items-center">
-                          <Link
-                            href={`/dashboard/prescription/new?consultId=${activeConsult.id}&patientName=${encodeURIComponent(activeConsult.patient.name)}`}
+                          <button
+                            onClick={handleStartVideoCall}
                             className="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all text-sm flex items-center gap-2"
                           >
-                            <span className="material-symbols-outlined text-sm">add</span>
-                            Create New Prescription
-                          </Link>
+                            <span className="material-symbols-outlined text-sm">videocam</span>
+                            Join Call to Prescribe
+                          </button>
                           <Link
                             href={`/dashboard/prescription?consultId=${activeConsult.id}`}
                             className="text-primary text-sm font-bold hover:underline flex items-center gap-1"

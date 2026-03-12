@@ -22,15 +22,17 @@ export async function POST(request: NextRequest) {
     const currentMessage = message || symptomList;
     const conversationStep = Math.max(1, Math.min(step, 5));
 
-    const prompt = `You are a medical triage assistant for rural India (GraamSehat). 
+    const prompt = `You are a friendly, caring medical triage assistant for rural India (GraamSehat). 
 This is step ${conversationStep} of a 5-step symptom assessment conversation.
 Patient's latest message: "${currentMessage}"
 All symptoms mentioned so far: ${symptomList}
 
 Rules:
+- Be very empathetic, kind, and conversational in your "message" text. Show that you care.
 - If step < 3 OR you need more info (e.g. duration, severity not mentioned), ask ONE clear follow-up question. OMIT the "triage" key entirely.
 - If step >= 3 AND you have enough context, provide a triage result.
-- Keep language simple — patient is in rural India.
+- ALWAYS include advice to consult a doctor or book a teleconsultation in your final evaluation message, even for home care (e.g. "It's always best to speak with a doctor to be sure...").
+- Keep language simple and easy to understand.
 
 Respond ONLY with valid JSON. No markdown, no code fences. Use this EXACT structure:
 {

@@ -701,12 +701,17 @@ function ConsultationRoomContent() {
               </div>
             ) : null}
             {role === "doctor" && (
-              <Link
-                href={`/dashboard/prescription/new?consultId=${consultId}`}
-                className="mt-3 w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold py-2 rounded-xl transition-colors"
+              <button
+                onClick={() => setShowPrescribePanel((v) => !v)}
+                className={`mt-3 w-full flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all ${
+                  showPrescribePanel
+                    ? "bg-primary text-white shadow-lg shadow-primary/30"
+                    : "bg-primary/20 hover:bg-primary/30 text-primary"
+                }`}
               >
-                <span className="material-symbols-outlined text-sm">prescriptions</span> Write Prescription
-              </Link>
+                <span className="material-symbols-outlined text-sm">{showPrescribePanel ? "close" : "prescriptions"}</span>
+                {showPrescribePanel ? "Close Prescription Pad" : "✏️ Write & Send Prescription"}
+              </button>
             )}
           </div>
 
@@ -781,41 +786,75 @@ function ConsultationRoomContent() {
               ))}
             </div>
 
-            {/* Doctor Compose Prescription Panel */}
+            {/* Doctor Live Prescription Pad */}
             {role === "doctor" && showPrescribePanel && (
-              <div className="p-3 border-t border-slate-800 bg-slate-900 space-y-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-bold text-primary uppercase">Add Medicine</span>
-                  <button onClick={() => setShowPrescribePanel(false)} className="text-slate-400 hover:text-white"><span className="material-symbols-outlined text-sm">close</span></button>
+              <div className="border-t border-slate-700 bg-slate-900 p-4 space-y-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm">prescriptions</span>
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">Add Medicine to Prescription</span>
+                  </div>
+                  <button onClick={() => setShowPrescribePanel(false)} className="text-slate-500 hover:text-white transition-colors">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Medicine Name (e.g., Paracetamol 500mg)" 
-                  value={prescriptionForm.name}
-                  onChange={(e) => setPrescriptionForm({ ...prescriptionForm, name: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary mb-2"
-                />
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Freq (e.g., 1-0-1)" value={prescriptionForm.frequency} onChange={(e) => setPrescriptionForm({...prescriptionForm, frequency: e.target.value})} className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs outline-none" />
-                  <input type="text" placeholder="Days" value={prescriptionForm.duration} onChange={(e) => setPrescriptionForm({...prescriptionForm, duration: e.target.value})} className="w-16 bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs outline-none" />
-                  <input type="number" placeholder="Qty" value={prescriptionForm.maxQty} onChange={(e) => setPrescriptionForm({...prescriptionForm, maxQty: parseInt(e.target.value) || 1})} className="w-16 bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-xs outline-none" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Medicine Name *"
+                    value={prescriptionForm.name}
+                    onChange={(e) => setPrescriptionForm({ ...prescriptionForm, name: e.target.value })}
+                    className="col-span-2 bg-slate-800 border border-slate-700 focus:border-primary text-white rounded-lg px-3 py-2 text-xs outline-none placeholder:text-slate-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Dosage (e.g., 500mg)"
+                    value={prescriptionForm.dosage}
+                    onChange={(e) => setPrescriptionForm({ ...prescriptionForm, dosage: e.target.value })}
+                    className="bg-slate-800 border border-slate-700 focus:border-primary text-white rounded-lg px-3 py-2 text-xs outline-none placeholder:text-slate-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Frequency (e.g., 1-0-1)"
+                    value={prescriptionForm.frequency}
+                    onChange={(e) => setPrescriptionForm({ ...prescriptionForm, frequency: e.target.value })}
+                    className="bg-slate-800 border border-slate-700 focus:border-primary text-white rounded-lg px-3 py-2 text-xs outline-none placeholder:text-slate-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Duration (e.g., 5 days)"
+                    value={prescriptionForm.duration}
+                    onChange={(e) => setPrescriptionForm({ ...prescriptionForm, duration: e.target.value })}
+                    className="bg-slate-800 border border-slate-700 focus:border-primary text-white rounded-lg px-3 py-2 text-xs outline-none placeholder:text-slate-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    min={1}
+                    value={prescriptionForm.maxQty}
+                    onChange={(e) => setPrescriptionForm({ ...prescriptionForm, maxQty: parseInt(e.target.value) || 1 })}
+                    className="bg-slate-800 border border-slate-700 focus:border-primary text-white rounded-lg px-3 py-2 text-xs outline-none placeholder:text-slate-500"
+                  />
                 </div>
                 <button
                   onClick={sendPrescription}
                   disabled={!prescriptionForm.name}
-                  className="w-full mt-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-lg transition-all"
+                  className="w-full bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs py-2.5 rounded-lg transition-all flex items-center justify-center gap-2"
                 >
-                  Send to Patient
+                  <span className="material-symbols-outlined text-sm">send</span>
+                  Send Prescription to Patient
                 </button>
               </div>
             )}
 
             <div className="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-950">
-              {role === "doctor" && !showPrescribePanel && (
+              {role === "doctor" && (
                 <button
-                  onClick={() => setShowPrescribePanel(true)}
-                  className="shrink-0 bg-primary/20 hover:bg-primary/40 text-primary w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0"
-                  title="Prescribe Medicine"
+                  onClick={() => setShowPrescribePanel((v) => !v)}
+                  className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-all ${
+                    showPrescribePanel ? "bg-primary text-white" : "bg-primary/20 hover:bg-primary/40 text-primary"
+                  }`}
+                  title={showPrescribePanel ? "Close Prescription Pad" : "Open Prescription Pad"}
                 >
                   <span className="material-symbols-outlined text-lg">medical_services</span>
                 </button>

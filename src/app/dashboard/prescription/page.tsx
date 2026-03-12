@@ -78,6 +78,8 @@ function PrescriptionContent() {
 
   useEffect(() => { fetchPrescription(); }, [fetchPrescription]);
 
+  const [ordering, setOrdering] = useState(false);
+
   const sendPrescriptionSMS = async () => {
     if (!rx) return;
     setSmsStatus("sending");
@@ -120,6 +122,32 @@ function PrescriptionContent() {
     } else {
       await navigator.clipboard.writeText(text);
       showToast("Prescription details copied to clipboard!");
+    }
+  };
+  const handleOrder = async (isDelivery: boolean) => {
+    if (!rx || ordering) return;
+    setOrdering(true);
+    try {
+      // Create an order for each medicine in the prescription
+      for (const med of rx.medicines) {
+        await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patientId: rx.consultation?.patient?.phone ? (localStorage.getItem("userId") ?? "unknown") : "unknown",
+            medicineName: med.name,
+            quantity: parseInt(med.quantity ?? "1", 10) || 1,
+            notes: `Prescription ID: ${rx.id.slice(-6)}`,
+            consultationId: rx.consultation ? rx.id : undefined,
+            deliveryAddress: isDelivery ? (rx.consultation?.patient?.village ?? "Home Delivery") : null,
+          })
+        });
+      }
+      showToast(isDelivery ? "Home delivery request sent!" : "Order placed! Pharmacy will prepare your medicines.");
+    } catch {
+      showToast("❌ Failed to place order. Please try again.");
+    } finally {
+      setOrdering(false);
     }
   };
 
@@ -220,16 +248,36 @@ function PrescriptionContent() {
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{rx.diagnosis}</h2>
             <p className="text-slate-500 mt-1">Prescribed by <strong>{rx.doctorName}</strong> · {new Date(rx.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
           </div>
-          {qrDataUrl ? (
-            <div className="flex flex-col items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrDataUrl} alt="Prescription QR Code" className="w-28 h-28 rounded-xl border-2 border-primary/20 shadow-sm" />
-              <p className="text-[10px] text-slate-400 mt-1">Scan for offline access</p>
-            </div>
-          ) : null}
-        </div>
+            {qrDataUrl ? (
+              <div className="flex flex-col items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt="Prescription QR Code" className="w-28 h-28 rounded-xl border-2 border-primary/20 shadow-sm" />
+                <p className="text-[10px] text-slate-400 mt-1">Scan for offline access</p>
+              </div>
+            ) : null}
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* AI Voice Agent (ElevenLabs) */}
+          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-6 mb-8 flex items-center justify-between gap-6 shadow-sm">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-blue-600">smart_toy</span>
+                <h3 className="font-bold text-slate-900 dark:text-white">AI Health Assistant</h3>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Have questions about your prescription or dosage? Speak directly with our AI voice assistant for guided help.</p>
+            </div>
+            
+            {/* The custom element injected by the script */}
+            <div className="shrink-0 h-[60px] w-auto relative z-10">
+              {/* @ts-expect-error Custom element from external script */}
+              <elevenlabs-convai agent-id="agent_3301kkhxz86cfnjr4w81kfh18917"></elevenlabs-convai>
+            </div>
+            
+            {/* Load Script */}
+            <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Medicines */}
           <div className="lg:col-span-2 space-y-6">
             {/* Patient Info */}
@@ -360,18 +408,20 @@ function PrescriptionContent() {
                 ))}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button
-                    onClick={() => showToast("Order placed! Pharmacy will prepare your medicines.")}
-                    className="bg-primary text-white text-xs font-bold py-2 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-1"
+                    onClick={() => handleOrder(false)}
+                    disabled={ordering}
+                    className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">shopping_bag</span>
-                    Order Pickup
+                    {ordering ? "Ordering..." : "Order Pickup"}
                   </button>
                   <button
-                    onClick={() => showToast("Home delivery request sent! You'll receive a confirmation call.")}
-                    className="border border-primary text-primary text-xs font-bold py-2 rounded-xl hover:bg-primary/5 transition-all flex items-center justify-center gap-1"
+                    onClick={() => handleOrder(true)}
+                    disabled={ordering}
+                    className="border border-primary text-primary hover:bg-primary/5 disabled:opacity-50 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">local_shipping</span>
-                    Home Delivery
+                    {ordering ? "Ordering..." : "Home Delivery"}
                   </button>
                 </div>
               </div>
