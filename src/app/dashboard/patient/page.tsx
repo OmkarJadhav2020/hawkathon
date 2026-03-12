@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -14,14 +14,10 @@ type DashboardData = {
   upcomingAppointments: Appointment[];
   pastAppointments: { id: string; doctorName: string; reason: string; date: string; type: string; status: string }[];
 };
+type Order = { id: string; medicineName: string; quantity: number; status: string; createdAt: string };
 
 // ─── Consultation Polling Hook ────────────────────────────────────────────────
-type ActiveConsult = {
-  id: string;
-  doctorName: string;
-  status: string;
-  callStatus: string;
-};
+type ActiveConsult = { id: string; doctorName: string; status: string; callStatus: string };
 
 function useActiveConsultation(userId: string) {
   const [activeConsult, setActiveConsult] = useState<ActiveConsult | null>(null);
@@ -29,33 +25,69 @@ function useActiveConsultation(userId: string) {
 
   useEffect(() => {
     if (!userId) return;
-
     const checkActive = async () => {
       try {
         const res = await fetch(`/api/consultations?patientId=${userId}`);
         if (!res.ok) return;
         const data = await res.json();
-        
-        // Find in-progress or ringing consultation
         const inProgress = data.find((c: ActiveConsult) => c.status === "IN_PROGRESS" || c.status === "PENDING");
         setActiveConsult(inProgress || null);
-
-        // Detect incoming ringing call
         const ringing = data.find((c: ActiveConsult) => c.callStatus === "RINGING");
         setIncomingCall(ringing || null);
-      } catch {
-        // silently ignore
-      }
+      } catch { /* ignore */ }
     };
-
     checkActive();
-    const interval = setInterval(checkActive, 5000); // poll every 5s
+    const interval = setInterval(checkActive, 5000);
     return () => clearInterval(interval);
   }, [userId]);
 
   return { activeConsult, incomingCall };
 }
 
+// ─── Notifications Hook ───────────────────────────────────────────────────────
+type Notification = { id: string; type: "appointment" | "order" | "info"; title: string; body: string; time: string };
+
+function useNotifications(userId: string, dashboardData: DashboardData | null, orders: Order[]) {
+  const [notifs, setNotifs] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    const items: Notification[] = [];
+
+    // Upcoming appointments
+    dashboardData?.upcomingAppointments?.slice(0, 3).forEach((apt) => {
+      if (apt.status !== "COMPLETED" && apt.status !== "CANCELLED") {
+        items.push({
+          id: `apt-${apt.id}`,
+          type: "appointment",
+          title: "Upcoming Appointment",
+          body: `${apt.specialty} with ${apt.doctorName} on ${new Date(apt.scheduledAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} at ${new Date(apt.scheduledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`,
+          time: new Date(apt.scheduledAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+        });
+      }
+    });
+
+    // Recent orders
+    orders.slice(0, 3).forEach((order) => {
+      const statusMap: Record<string, string> = {
+        PENDING: "is being processed",
+        CONFIRMED: "has been confirmed",
+        DISPENSED: "is ready / dispatched",
+        CANCELLED: "was cancelled",
+      };
+      items.push({
+        id: `order-${order.id}`,
+        type: "order",
+        title: "Medicine Order Update",
+        body: `${order.medicineName} x${order.quantity} ${statusMap[order.status] ?? order.status}`,
+        time: new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      });
+    });
+
+    setNotifs(items);
+  }, [dashboardData, orders]);
+
+  return notifs;
+}
 
 // ─── Record type icon map ─────────────────────────────────────────────────────
 const recordIconMap: Record<string, { icon: string; color: string }> = {
@@ -97,9 +129,7 @@ function AddVitalModal({ userId, onClose, onSaved }: { userId: string; onClose: 
       });
       onSaved();
       onClose();
-    } catch {
-      setSaving(false);
-    }
+    } catch { setSaving(false); }
   };
 
   return (
@@ -146,28 +176,30 @@ function AddVitalModal({ userId, onClose, onSaved }: { userId: string; onClose: 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function PatientDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
   const [showVitalModal, setShowVitalModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const notifsRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // In production: get userId from session cookie
-  // Check authenticaton
+  // Auth check
   useEffect(() => {
     if (typeof window !== "undefined") {
       const id = localStorage.getItem("userId");
       const role = localStorage.getItem("userRole");
-      if (!id || role !== "PATIENT") {
-        router.push("/");
-      }
+      if (!id || role !== "PATIENT") router.push("/");
     }
   }, [router]);
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+  const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : null;
 
   const { activeConsult: activeConsultCard, incomingCall } = useActiveConsultation(userId as string);
-
 
   const fetchDashboard = async () => {
     if (!userId) return;
@@ -175,23 +207,49 @@ export default function PatientDashboard() {
       const res = await fetch(`/api/patient/dashboard?userId=${userId}`);
       const json = await res.json();
       setData(json);
-    } catch {
-      // keep null — skeleton shown
-    } finally {
-      setLoading(false);
+    } catch { /* keep null */ } finally { setLoading(false); }
+  };
+
+  const fetchOrders = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/orders?patientId=${userId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setOrders(json.orders?.slice(0, 5) ?? []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      fetchDashboard();
+      fetchOrders();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) setShowNotifs(false);
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setShowAccountMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  const notifications = useNotifications(userId ?? "", data, orders);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
   };
 
-  useEffect(() => { if (userId) fetchDashboard(); }, [userId]);
+  const handleReschedule = () => router.push("/dashboard/patient/appointments");
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleReschedule = (id: string) => {
-    router.push("/dashboard/patient/appointments");
-  };
   const handleCancel = async (id: string) => {
     if (!confirm("Are you sure you want to cancel this appointment?")) return;
     try {
@@ -202,29 +260,32 @@ export default function PatientDashboard() {
       });
       showToast("Appointment cancelled successfully.");
       fetchDashboard();
-    } catch {
-      showToast("Failed to cancel appointment.");
-    }
+    } catch { showToast("Failed to cancel appointment."); }
   };
+
   const handleDownload = (rec: HealthRecord) => {
-    if (rec.fileUrl) {
-      window.open(rec.fileUrl, "_blank");
-    } else {
-      showToast("No file attached to this record. Ask your doctor to upload the document.");
-    }
+    if (rec.fileUrl) window.open(rec.fileUrl, "_blank");
+    else showToast("No file attached. Ask your doctor to upload the document.");
+  };
+
+  const declineCall = async () => {
+    if (!incomingCall) return;
+    try {
+      await fetch(`/api/consultations?id=${incomingCall.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callStatus: "ENDED" }),
+      });
+    } catch { /* ignore */ }
   };
 
   const user = data?.user;
-  const initials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? "??";
+  const initials = user?.name?.split(" ").map((n) => n[0]).join("").slice(0, 2) ?? (userName?.slice(0, 2) ?? "??");
   const records = data?.healthRecords ?? [];
-
-  // Exclude COMPLETED items from the upcoming preview card, and also exclude the active one if we are already showing it in the banner
   const upcomingApt = data?.upcomingAppointments?.find(
     (a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id)
   );
 
-
-  // Health tip cycles daily
   const tips = [
     "Drink at least 3 litres of water daily to stay hydrated.",
     "Walk for 30 minutes every morning to improve heart health.",
@@ -239,26 +300,13 @@ export default function PatientDashboard() {
     </div>
   );
 
-  // ── Decline incoming call (patch callStatus to ENDED) ─────────────────────
-  const declineCall = async () => {
-    if (!incomingCall) return;
-    try {
-      await fetch(`/api/consultations?id=${incomingCall.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callStatus: "ENDED" }),
-      });
-    } catch { /* ignore */ }
-  };
-
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
 
-      {/* ── INCOMING VIDEO CALL MODAL ─────────────────────────────────────── */}
+      {/* INCOMING VIDEO CALL MODAL */}
       {incomingCall && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-sm p-8 flex flex-col items-center gap-4 text-center">
-            {/* Pulsing avatar */}
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
               <div className="relative w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center ring-4 ring-primary/40">
@@ -271,22 +319,17 @@ export default function PatientDashboard() {
               <p className="text-slate-500 text-sm mt-1">GraamSehat Consultation</p>
             </div>
             <div className="flex gap-4 w-full mt-2">
-              <button
-                onClick={declineCall}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors"
-              >
+              <button onClick={declineCall} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors">
                 <span className="material-symbols-outlined">call_end</span> Decline
               </button>
-              <button
-                onClick={() => router.push(`/dashboard/patient/consultation?id=${incomingCall.id}`)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold transition-colors"
-              >
+              <button onClick={() => router.push(`/dashboard/patient/consultation?id=${incomingCall.id}`)} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold transition-colors">
                 <span className="material-symbols-outlined">call</span> Accept
               </button>
             </div>
           </div>
         </div>
       )}
+
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-2xl max-w-sm text-center animate-in fade-in slide-in-from-top-2">
@@ -311,21 +354,113 @@ export default function PatientDashboard() {
           </div>
           <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
         </div>
-        <div className="flex flex-1 justify-end gap-4 items-center">
-          <nav className="hidden md:flex gap-6 mr-8">
+        <div className="flex flex-1 justify-end gap-3 items-center">
+          <nav className="hidden md:flex gap-6 mr-6">
             <a className="text-primary font-semibold flex items-center gap-1 text-sm" href="#">
               <span className="material-symbols-outlined text-sm">home</span> Home
             </a>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/appointments">Appointments</Link>
             <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/records">Records</Link>
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/orders">My Orders</Link>
           </nav>
-          <div className="flex gap-2">
-            <button onClick={() => showToast("No new notifications.")} className="flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all">
+
+          {/* Notifications Bell */}
+          <div className="relative" ref={notifsRef}>
+            <button
+              onClick={() => { setShowNotifs((v) => !v); setShowAccountMenu(false); }}
+              className="relative flex items-center justify-center rounded-xl h-10 w-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all"
+            >
               <span className="material-symbols-outlined">notifications</span>
+              {notifications.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {notifications.length > 9 ? "9+" : notifications.length}
+                </span>
+              )}
             </button>
+
+            {showNotifs && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <p className="font-bold text-slate-900 dark:text-white text-sm">Notifications</p>
+                  {notifications.length > 0 && (
+                    <span className="text-xs text-slate-400">{notifications.length} new</span>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">notifications_none</span>
+                    <p className="text-sm text-slate-400">No new notifications</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-80 overflow-y-auto">
+                    {notifications.map((n) => (
+                      <div key={n.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.type === "appointment" ? "bg-primary/10 text-primary" : n.type === "order" ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-500"}`}>
+                          <span className="material-symbols-outlined text-sm">
+                            {n.type === "appointment" ? "event" : n.type === "order" ? "local_pharmacy" : "info"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{n.title}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 leading-tight">{n.body}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">{n.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800">
+                  <Link href="/dashboard/patient/orders" onClick={() => setShowNotifs(false)} className="block text-center text-xs font-bold text-primary hover:underline py-1">
+                    View All Orders
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
-            {loading ? "..." : initials}
+
+          {/* Account Avatar */}
+          <div className="relative" ref={accountRef}>
+            <button
+              onClick={() => { setShowAccountMenu((v) => !v); setShowNotifs(false); }}
+              className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/30 transition-colors"
+            >
+              {loading ? "..." : initials}
+            </button>
+
+            {showAccountMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                <div className="px-4 py-4 border-b border-slate-100 dark:border-slate-800">
+                  <p className="font-bold text-slate-900 dark:text-white text-sm">{user?.name ?? userName ?? "Patient"}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{user?.phone ?? "—"}</p>
+                  <span className="mt-2 inline-block text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Patient</span>
+                </div>
+                <div className="p-2">
+                  <Link
+                    href="/dashboard/patient/records"
+                    onClick={() => setShowAccountMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-slate-400 text-lg">folder_open</span>
+                    Health Records
+                  </Link>
+                  <Link
+                    href="/dashboard/patient/orders"
+                    onClick={() => setShowAccountMenu(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-slate-400 text-lg">receipt_long</span>
+                    My Orders
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 font-semibold transition-colors mt-1"
+                  >
+                    <span className="material-symbols-outlined text-lg">logout</span>
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -335,7 +470,7 @@ export default function PatientDashboard() {
         <div className="flex flex-wrap justify-between items-end gap-4 mb-8">
           <div>
             <h1 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
-              {loading ? "Loading..." : `Namaste, ${user?.name?.split(" ")[0] ?? "Patient"}! 🙏`}
+              {loading ? "Loading..." : `Namaste, ${user?.name?.split(" ")[0] ?? userName?.split(" ")[0] ?? "Patient"}! 🙏`}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-base mt-1">Your health is our priority today.</p>
           </div>
@@ -364,7 +499,6 @@ export default function PatientDashboard() {
                 <p className="text-green-100 text-sm">{activeConsultCard.doctorName ? `Dr. ${activeConsultCard.doctorName}` : "Your doctor"} has started your consultation.</p>
               </div>
             </div>
-            
             <Link
               href={`/dashboard/patient/consultation?id=${activeConsultCard.id}`}
               className="w-full sm:w-auto bg-white text-green-700 font-black px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
@@ -381,22 +515,23 @@ export default function PatientDashboard() {
             {/* Quick Actions */}
             <section>
               <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 {[
                   { icon: "stethoscope", label: "Check Symptoms", href: "/dashboard/patient/symptoms" },
                   { icon: "event_available", label: "Book Appointment", href: "/dashboard/patient/appointments" },
                   { icon: "description", label: "My Records", href: "/dashboard/patient/records" },
                   { icon: "medication", label: "Find Medicine", href: "/dashboard/patient/pharmacy" },
+                  { icon: "receipt_long", label: "My Orders", href: "/dashboard/patient/orders" },
                 ].map((action) => (
                   <Link
                     key={action.label}
                     href={action.href}
-                    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all group shadow-sm hover:shadow-md"
+                    className="flex flex-col items-center justify-center p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary transition-all group shadow-sm hover:shadow-md"
                   >
                     <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:bg-primary group-hover:text-white transition-all">
                       <span className="material-symbols-outlined text-2xl">{action.icon}</span>
                     </div>
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 text-center">{action.label}</span>
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 text-center leading-tight">{action.label}</span>
                   </Link>
                 ))}
               </div>
@@ -430,10 +565,7 @@ export default function PatientDashboard() {
                             <p className="text-xs text-slate-500">{formatDate(rec.date)}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDownload(rec)}
-                          className="flex items-center gap-1 text-slate-400 hover:text-primary transition-colors"
-                        >
+                        <button onClick={() => handleDownload(rec)} className="flex items-center gap-1 text-slate-400 hover:text-primary transition-colors">
                           <span className="material-symbols-outlined">{rec.fileUrl ? "download" : "info"}</span>
                           <span className="text-sm hidden sm:inline">{rec.fileUrl ? "Download" : "No file"}</span>
                         </button>
@@ -460,12 +592,8 @@ export default function PatientDashboard() {
                   <>
                     <div className="flex items-start gap-4 mb-6">
                       <div className="bg-white/20 p-3 rounded-lg flex flex-col items-center min-w-[60px]">
-                        <span className="text-xs font-bold uppercase">
-                          {new Date(upcomingApt.scheduledAt).toLocaleString("en-IN", { month: "short" }).toUpperCase()}
-                        </span>
-                        <span className="text-2xl font-black">
-                          {new Date(upcomingApt.scheduledAt).getDate()}
-                        </span>
+                        <span className="text-xs font-bold uppercase">{new Date(upcomingApt.scheduledAt).toLocaleString("en-IN", { month: "short" }).toUpperCase()}</span>
+                        <span className="text-2xl font-black">{new Date(upcomingApt.scheduledAt).getDate()}</span>
                       </div>
                       <div>
                         <p className="font-bold text-lg leading-tight">{upcomingApt.specialty} Consultation</p>
@@ -474,32 +602,20 @@ export default function PatientDashboard() {
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <button
-                        onClick={() => handleReschedule(upcomingApt.id)}
-                        className="flex-1 bg-white text-primary font-bold py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors"
-                      >
-                        Reschedule
-                      </button>
-                      <button
-                        onClick={() => handleCancel(upcomingApt.id)}
-                        className="flex-1 bg-white/10 border border-white/30 text-white font-bold py-2 rounded-lg text-sm hover:bg-white/20 transition-colors"
-                      >
-                        Cancel
-                      </button>
+                      <button onClick={() => handleReschedule()} className="flex-1 bg-white text-primary font-bold py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors">Reschedule</button>
+                      <button onClick={() => handleCancel(upcomingApt.id)} className="flex-1 bg-white/10 border border-white/30 text-white font-bold py-2 rounded-lg text-sm hover:bg-white/20 transition-colors">Cancel</button>
                     </div>
                   </>
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-white/70 text-sm mb-3">No upcoming appointments.</p>
-                    <Link href="/dashboard/patient/appointments" className="bg-white text-primary font-bold px-4 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors">
-                      Book Now
-                    </Link>
+                    <Link href="/dashboard/patient/appointments" className="bg-white text-primary font-bold px-4 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors">Book Now</Link>
                   </div>
                 )}
               </div>
             </section>
 
-            {/* Vitals — patient info from DB */}
+            {/* Patient Info */}
             <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
               <h3 className="text-slate-900 dark:text-white font-bold mb-4">Patient Info</h3>
               {loading ? (
@@ -528,10 +644,7 @@ export default function PatientDashboard() {
                   )}
                 </div>
               )}
-              <button
-                onClick={() => setShowVitalModal(true)}
-                className="w-full mt-4 text-primary text-sm font-bold flex items-center justify-center gap-1 hover:bg-primary/5 py-2 rounded-lg transition-colors"
-              >
+              <button onClick={() => setShowVitalModal(true)} className="w-full mt-4 text-primary text-sm font-bold flex items-center justify-center gap-1 hover:bg-primary/5 py-2 rounded-lg transition-colors">
                 Add Vital Reading <span className="material-symbols-outlined text-sm">add</span>
               </button>
             </section>
@@ -543,11 +656,7 @@ export default function PatientDashboard() {
                 <h3 className="text-red-900 dark:text-red-400 font-bold">Emergency Support</h3>
               </div>
               <p className="text-red-700 dark:text-red-300 text-sm mb-4">Instantly connect with an ambulance or on-duty medical staff.</p>
-              {/* FIXED: was dead <button>, now real tel: link */}
-              <a
-                href="tel:108"
-                className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2"
-              >
+              <a href="tel:108" className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined">call</span> Call Ambulance (108)
               </a>
             </section>
@@ -562,6 +671,7 @@ export default function PatientDashboard() {
           { icon: "event", label: "Book", tab: "book", href: "/dashboard/patient/appointments" },
           { icon: "article", label: "Records", tab: "records", href: "/dashboard/patient/records" },
           { icon: "medication", label: "Meds", tab: "meds", href: "/dashboard/patient/pharmacy" },
+          { icon: "receipt_long", label: "Orders", tab: "orders", href: "/dashboard/patient/orders" },
         ].map((item) => (
           <Link
             key={item.tab}

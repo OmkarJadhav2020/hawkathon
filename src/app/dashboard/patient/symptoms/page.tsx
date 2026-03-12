@@ -2,21 +2,25 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Message = { role: "ai" | "user"; content: string; pills?: string[]; timestamp: string };
 type TriageResult = { category: "HOME_CARE" | "TELECONSULT" | "EMERGENCY"; probability: number; condition: string; description: string } | null;
 
-const initialMessages: Message[] = [
-  {
-    role: "ai",
-    content: "Hello! I'm Sehat AI Assistant. I'm here to help you understand your symptoms. What are you experiencing today?",
-    pills: ["Fever", "Cough", "Headache", "Stomach Pain", "Body Ache"],
-    timestamp: "Now",
-  },
-];
+function makeInitialMessages(): Message[] {
+  return [
+    {
+      role: "ai",
+      content: "Hello! I'm Sehat AI Assistant. I'm here to help you understand your symptoms. What are you experiencing today?",
+      pills: ["Fever", "Cough", "Headache", "Stomach Pain", "Body Ache"],
+      timestamp: "Now",
+    },
+  ];
+}
 
 export default function SymptomChecker() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>(makeInitialMessages());
   const [input, setInput] = useState("");
   const [collectedSymptoms, setCollectedSymptoms] = useState<string[]>([]);
   const [triageResult, setTriageResult] = useState<TriageResult>(null);
@@ -26,33 +30,65 @@ export default function SymptomChecker() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  const resetConversation = () => {
+    setMessages(makeInitialMessages());
+    setCollectedSymptoms([]);
+    setTriageResult(null);
+    setStep(1);
+    setInput("");
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
 
-    // Handle action pills that should navigate
+    // Handle navigation pills
     if (text === "Book Teleconsult") {
-      window.location.href = "/dashboard/patient/appointments";
+      router.push("/dashboard/patient/appointments");
       return;
     }
     if (text === "Find Pharmacy") {
-      window.location.href = "/dashboard/patient/pharmacy";
+      router.push("/dashboard/patient/pharmacy");
+      return;
+    }
+    if (text === "Home Care Tips") {
+      // Show home care tips inline
+      const homeMsg: Message = {
+        role: "ai",
+        content: "🏠 Home Care Tips:\n• Rest well and drink plenty of water\n• Eat light, easily digestible food\n• Monitor your temperature every 6 hours\n• Take paracetamol for fever/pain if needed\n• Avoid self-medication beyond basics\n• See a doctor if symptoms worsen or don't improve in 2 days",
+        pills: ["Book Teleconsult", "Find Pharmacy"],
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, { role: "user", content: text, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }, homeMsg]);
       return;
     }
 
-    const userMsg: Message = { role: "user", content: text, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
+    const userMsg: Message = {
+      role: "user",
+      content: text,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
     setMessages((prev) => [...prev, userMsg]);
-    const updatedSymptoms = collectedSymptoms.includes(text) ? collectedSymptoms : [...collectedSymptoms, text];
-    if (!collectedSymptoms.includes(text)) setCollectedSymptoms(updatedSymptoms);
+
+    // Collect symptom (only add if not already in list, and not a meta-reply like "Since today")
+    const metaReplies = ["Since today", "1–2 days", "3–5 days", "More than a week", "1-2 days", "None of these", "High fever (>102°F)", "Difficulty breathing", "Chest pain"];
+    const shouldAddToSymptoms = !metaReplies.includes(text) && !collectedSymptoms.includes(text);
+    const updatedSymptoms = shouldAddToSymptoms ? [...collectedSymptoms, text] : [...collectedSymptoms, text];
+    if (shouldAddToSymptoms) setCollectedSymptoms(updatedSymptoms);
+
     setInput("");
     setLoading(true);
-    setStep((s) => Math.min(s + 1, 5));
+    const newStep = Math.min(step + 1, 6);
+    setStep(newStep);
 
     try {
-      // Call the real Gemini AI triage API
       const res = await fetch("/api/triage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symptoms: updatedSymptoms, message: text, step }),
+        body: JSON.stringify({
+          symptoms: updatedSymptoms.length > 0 ? updatedSymptoms : [text],
+          message: text,
+          step: newStep,
+        }),
       });
 
       let aiResponse: Message;
@@ -61,7 +97,6 @@ export default function SymptomChecker() {
       if (res.ok) {
         const data = await res.json();
 
-        // If the API returns a triage result, set it
         if (data.triage) {
           result = data.triage as TriageResult;
           setTriageResult(result);
@@ -69,58 +104,56 @@ export default function SymptomChecker() {
 
         aiResponse = {
           role: "ai",
-          content: data.message || (data.triage ? "I have assessed your symptoms. Please review the recommended actions on the right." : "Thank you. Is there anything else you'd like to share about your condition?"),
+          content: data.message || (data.triage ? "I have assessed your symptoms. Please review the recommended actions." : "Thank you. Can you tell me more?"),
           pills: data.pills || (data.triage ? ["Book Teleconsult", "Find Pharmacy", "Home Care Tips"] : undefined),
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
       } else {
-        // Graceful fallback if API fails
+        // Graceful fallback
         aiResponse = {
           role: "ai",
-          content: step >= 3
-            ? "Based on what you've described, this may need a doctor's attention. Please book a teleconsultation."
-            : step === 2
-            ? "I see. Have you also experienced any breathing difficulty, chest pain, or fever above 102°F?"
+          content: newStep >= 4
+            ? "Based on what you've described, a doctor's attention may be needed. Please consider booking a teleconsultation."
+            : newStep === 3
+            ? "Are any of these also present? This will help me assess better."
             : "How long have you been feeling this way?",
-          pills: step >= 3
+          pills: newStep >= 4
             ? ["Book Teleconsult", "Find Pharmacy"]
-            : step === 2
-            ? ["Yes, breathing difficulty", "Yes, high fever", "No, none of these"]
-            : ["Since today", "1–2 days", "More than a week"],
+            : newStep === 3
+            ? ["High fever (>102°F)", "Difficulty breathing", "Chest pain", "None of these"]
+            : ["Since today", "1–2 days", "3–5 days", "More than a week"],
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
 
-        // Set a fallback triage after step 3 even if API fails
-        if (step >= 3 && !triageResult) {
-          setTriageResult({
+        if (newStep >= 4 && !triageResult) {
+          result = {
             category: "TELECONSULT",
             probability: 70,
-            condition: "Unspecified — Doctor Advised",
-            description: "Our AI could not complete a full assessment. Please consult a doctor.",
-          });
+            condition: "Needs Doctor Assessment",
+            description: "Our AI recommends speaking with a doctor based on your symptoms.",
+          };
+          setTriageResult(result);
         }
       }
 
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
       console.error("Triage API error:", error);
-      const fallbackMsg: Message = {
+      setMessages((prev) => [...prev, {
         role: "ai",
-        content: "I'm having trouble connecting to the AI service. Please try again or book an appointment directly.",
+        content: "I'm having trouble connecting. Please try again or book an appointment directly.",
         pills: ["Book Teleconsult"],
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, fallbackMsg]);
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
-
   const categoryColors = {
-    HOME_CARE: { bg: "bg-green-50 dark:bg-green-900/20", text: "text-green-600", icon: "home_health", label: "Home Care" },
-    TELECONSULT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-600", icon: "video_call", label: "Teleconsult" },
-    EMERGENCY: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-600", icon: "emergency", label: "Emergency" },
+    HOME_CARE: { bg: "bg-green-50 dark:bg-green-900/20", border: "border-green-200 dark:border-green-800", text: "text-green-600", icon: "home_health", label: "Home Care" },
+    TELECONSULT: { bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-800", text: "text-amber-600", icon: "video_call", label: "Teleconsult" },
+    EMERGENCY: { bg: "bg-red-50 dark:bg-red-900/20", border: "border-red-200 dark:border-red-800", text: "text-red-600", icon: "emergency", label: "Emergency" },
   };
 
   return (
@@ -139,9 +172,20 @@ export default function SymptomChecker() {
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Smart Health Triage</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-          <span className="material-symbols-outlined text-sm">wifi</span>
-          <span className="text-xs font-bold">Online</span>
+        <div className="flex items-center gap-3">
+          {(step > 1 || triageResult) && (
+            <button
+              onClick={resetConversation}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">refresh</span>
+              Start Over
+            </button>
+          )}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+            <span className="material-symbols-outlined text-sm">wifi</span>
+            <span className="text-xs font-bold">Online</span>
+          </div>
         </div>
       </header>
 
@@ -167,7 +211,7 @@ export default function SymptomChecker() {
                   <span className="material-symbols-outlined text-sm">{msg.role === "ai" ? "smart_toy" : "person"}</span>
                 </div>
                 <div className={`flex flex-col gap-2 max-w-[80%] ${msg.role === "user" ? "items-end" : ""}`}>
-                  <div className={`p-4 rounded-2xl ${msg.role === "ai" ? "bg-slate-100 dark:bg-slate-800 rounded-tl-none" : "bg-primary text-white rounded-tr-none"}`}>
+                  <div className={`p-4 rounded-2xl whitespace-pre-wrap ${msg.role === "ai" ? "bg-slate-100 dark:bg-slate-800 rounded-tl-none" : "bg-primary text-white rounded-tr-none"}`}>
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                   </div>
                   {msg.pills && (
@@ -176,7 +220,8 @@ export default function SymptomChecker() {
                         <button
                           key={pill}
                           onClick={() => sendMessage(pill)}
-                          className="px-4 py-2 rounded-full border border-primary text-primary text-xs font-semibold hover:bg-primary hover:text-white transition-all"
+                          disabled={loading}
+                          className="px-4 py-2 rounded-full border border-primary text-primary text-xs font-semibold hover:bg-primary hover:text-white transition-all disabled:opacity-50"
                         >
                           {pill}
                         </button>
@@ -212,10 +257,15 @@ export default function SymptomChecker() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-                className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-4 pl-4 pr-12 text-sm focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-slate-100 outline-none"
+                className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-4 pl-4 pr-14 text-sm focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-slate-100 outline-none"
                 placeholder="Type your symptoms here..."
+                disabled={loading}
               />
-              <button onClick={() => sendMessage(input)} className="absolute right-2 p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || loading}
+                className="absolute right-2 p-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
                 <span className="material-symbols-outlined">send</span>
               </button>
             </div>
@@ -232,7 +282,7 @@ export default function SymptomChecker() {
 
           {triageResult ? (
             <>
-              <div className={`p-6 rounded-2xl border ${categoryColors[triageResult.category].bg}`}>
+              <div className={`p-6 rounded-2xl border ${categoryColors[triageResult.category].bg} ${categoryColors[triageResult.category].border}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`p-2 rounded-lg ${categoryColors[triageResult.category].bg}`}>
                     <span className={`material-symbols-outlined ${categoryColors[triageResult.category].text}`}>
@@ -247,7 +297,7 @@ export default function SymptomChecker() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">Probability</span>
-                    <span className="font-bold">{triageResult.probability}% {triageResult.condition}</span>
+                    <span className="font-bold">{triageResult.probability}% — {triageResult.condition}</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full">
                     <div className="h-full bg-amber-500 rounded-full" style={{ width: `${triageResult.probability}%` }} />
@@ -261,7 +311,7 @@ export default function SymptomChecker() {
                   <span className="material-symbols-outlined text-primary">video_chat</span>
                   <div>
                     <p className="text-sm font-bold">Speak with a GP</p>
-                    <p className="text-xs text-slate-400">Available in 15 mins</p>
+                    <p className="text-xs text-slate-400">Book a teleconsultation</p>
                   </div>
                   <span className="ml-auto text-primary text-xs font-bold">Book</span>
                 </Link>
@@ -269,10 +319,20 @@ export default function SymptomChecker() {
                   <span className="material-symbols-outlined text-primary">local_pharmacy</span>
                   <div>
                     <p className="text-sm font-bold">Find Nearby Pharmacy</p>
-                    <p className="text-xs text-slate-400">Open until 9:00 PM</p>
+                    <p className="text-xs text-slate-400">Order medicines online</p>
                   </div>
-                  <span className="ml-auto text-primary text-xs font-bold">Map</span>
+                  <span className="ml-auto text-primary text-xs font-bold">Shop</span>
                 </Link>
+                <button
+                  onClick={resetConversation}
+                  className="w-full flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors text-left"
+                >
+                  <span className="material-symbols-outlined text-slate-400">refresh</span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Start New Assessment</p>
+                    <p className="text-xs text-slate-400">Check different symptoms</p>
+                  </div>
+                </button>
               </div>
             </>
           ) : (

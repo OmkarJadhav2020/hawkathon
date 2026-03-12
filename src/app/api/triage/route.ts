@@ -6,9 +6,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Read body ONCE — critical, cannot call request.json() again after this
     const body = await request.json();
-    const { symptoms, isOffline } = body;
+    const { symptoms, message, step = 1, isOffline } = body;
 
     if (!symptoms || symptoms.length === 0) {
       return NextResponse.json({ error: "No symptoms provided" }, { status: 400 });
@@ -16,19 +15,27 @@ export async function POST(request: NextRequest) {
 
     // If offline mode or no API key, use rule-based fallback
     if (isOffline || !GEMINI_API_KEY) {
-      return NextResponse.json(ruleBasedTriage(symptoms));
+      return NextResponse.json(ruleBasedTriage(symptoms, step));
     }
 
     const symptomList = symptoms.join(", ");
+    const currentMessage = message || symptomList;
+    const conversationStep = Math.max(1, Math.min(step, 5));
 
-    const prompt = `You are a medical triage assistant for rural India (GraamSehat). A patient reports these symptoms: ${symptomList}.
+    const prompt = `You are a medical triage assistant for rural India (GraamSehat). 
+This is step ${conversationStep} of a 5-step symptom assessment conversation.
+Patient's latest message: "${currentMessage}"
+All symptoms mentioned so far: ${symptomList}
 
-Your task: If you need more info (less than 2 symptoms, or no duration/severity), ask ONE targeted follow-up question. If you have enough info, give a triage result.
+Rules:
+- If step < 3 OR you need more info (e.g. duration, severity not mentioned), ask ONE clear follow-up question. OMIT the "triage" key entirely.
+- If step >= 3 AND you have enough context, provide a triage result.
+- Keep language simple — patient is in rural India.
 
 Respond ONLY with valid JSON. No markdown, no code fences. Use this EXACT structure:
 {
-  "message": "Your conversational text here - either a question or final advice in simple language",
-  "pills": ["Button 1", "Button 2", "Button 3"],
+  "message": "Your conversational text here",
+  "pills": ["Quick reply 1", "Quick reply 2", "Quick reply 3"],
   "triage": {
     "category": "TELECONSULT",
     "condition": "condition in 3-5 words",
@@ -39,10 +46,8 @@ Respond ONLY with valid JSON. No markdown, no code fences. Use this EXACT struct
   }
 }
 
-Rules:
-- "category" must be exactly one of: HOME_CARE, TELECONSULT, EMERGENCY
-- Only include the "triage" key if you have ENOUGH information to diagnose. If asking a follow-up question, OMIT the "triage" key entirely.
-- Keep language simple — patient is in rural India`;
+Rules for "category": must be exactly one of: HOME_CARE, TELECONSULT, EMERGENCY
+Only include "triage" key if you are confident enough to triage. Otherwise ask follow-up.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -57,13 +62,13 @@ Rules:
     );
 
     if (!response.ok) {
-      return NextResponse.json(ruleBasedTriage(symptoms));
+      return NextResponse.json(ruleBasedTriage(symptoms, step));
     }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!text) return NextResponse.json(ruleBasedTriage(symptoms));
+    if (!text) return NextResponse.json(ruleBasedTriage(symptoms, step));
 
     try {
       // Strip any accidental markdown fences from Gemini output
@@ -72,16 +77,31 @@ Rules:
       return NextResponse.json(result);
     } catch {
       // JSON parse failed — fall back to rule-based
-      return NextResponse.json(ruleBasedTriage(symptoms));
+      return NextResponse.json(ruleBasedTriage(symptoms, step));
     }
   } catch (error) {
     console.error("Triage API error:", error);
-    return NextResponse.json(ruleBasedTriage(["unknown"]));
+    return NextResponse.json(ruleBasedTriage(["unknown"], 1));
   }
 }
 
-function ruleBasedTriage(symptoms: string[]) {
+function ruleBasedTriage(symptoms: string[], step: number = 1) {
   const lower = symptoms.map((s) => s.toLowerCase());
+
+  // Step 1-2: ask follow-up questions instead of triaging immediately
+  if (step <= 2) {
+    if (step === 1) {
+      return {
+        message: "I understand. How long have you been experiencing these symptoms?",
+        pills: ["Since today", "1–2 days", "3–5 days", "More than a week"],
+      };
+    }
+    // Step 2 — ask severity
+    return {
+      message: "Are any of these conditions also present?",
+      pills: ["High fever (>102°F)", "Difficulty breathing", "Chest pain", "None of these"],
+    };
+  }
 
   const emergencyKW = ["chest pain", "difficulty breathing", "unconscious", "stroke", "bleeding", "severe", "ambulance"];
   const teleconsultKW = ["fever", "cough", "pain", "vomiting", "diarrhea", "rash", "infection", "diabetes", "headache", "weakness"];
@@ -106,8 +126,8 @@ function ruleBasedTriage(symptoms: string[]) {
 
   if (isTeleconsult) {
     return {
-      message: "I have assessed your symptoms. A doctor consultation is recommended within the next 24 hours.",
-      pills: ["Book Teleconsult", "Find Pharmacy"],
+      message: "Based on your symptoms, a doctor consultation is recommended within the next 24 hours.",
+      pills: ["Book Teleconsult", "Find Pharmacy", "Home Care Tips"],
       triage: {
         category: "TELECONSULT",
         condition: "Possible Viral Infection",
@@ -120,7 +140,15 @@ function ruleBasedTriage(symptoms: string[]) {
   }
 
   return {
-    message: "I see. To better assess your condition, how long have you had these symptoms and are they getting worse?",
-    pills: ["Since today", "1-2 days", "More than a week"],
+    message: "Based on what you've described, this seems manageable at home. Stay hydrated and rest. See a doctor if symptoms worsen.",
+    pills: ["Book Teleconsult", "Find Pharmacy", "Home Care Tips"],
+    triage: {
+      category: "HOME_CARE",
+      condition: "Minor Discomfort",
+      probability: 65,
+      description: "Your symptoms appear mild. Rest, drink fluids, and monitor. Visit a doctor if symptoms worsen.",
+      nextSteps: ["Rest and stay hydrated", "Eat light meals", "Monitor temperature", "See a doctor if no improvement in 2 days"],
+      followUpIn: "48 hours",
+    },
   };
 }

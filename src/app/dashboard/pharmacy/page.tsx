@@ -81,7 +81,7 @@ export default function PharmacyDashboard() {
     if (typeof window !== "undefined") {
       const id = localStorage.getItem("userId");
       const r = localStorage.getItem("userRole");
-      if (!id || r !== "PHARMACIST") {
+      if (!id || r !== "PHARMACY") {
         router.push("/");
       }
     }

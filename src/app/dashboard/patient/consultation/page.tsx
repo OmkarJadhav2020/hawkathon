@@ -360,22 +360,51 @@ function ConsultationRoomContent() {
   };
 
   // ── Send Prescription (Doctor) ────────────────────────────────────
-  const sendPrescription = () => {
+  // Accumulates all live medicines so each DB save includes the full list
+  const sendPrescription = async () => {
     if (!prescriptionForm.name) return;
     const med = { ...prescriptionForm };
-    
+
     // Add locally for doctor to see
-    setLivePrescriptions((prev) => [...prev, med]);
-    
-    // Send to patient
+    const updatedPrescriptions = [...livePrescriptions, med];
+    setLivePrescriptions(updatedPrescriptions);
+
+    // Send to patient via data channel
     if (dataConnRef.current?.open) {
       dataConnRef.current.send(JSON.stringify({ type: "prescription", medicine: med }));
     }
-    
+
     addSystemMessage(`You prescribed: ${med.name}`);
     setPrescriptionForm({ name: "", dosage: "", frequency: "", duration: "", maxQty: 1 });
     setShowPrescribePanel(false);
+
+    // Persist to DB so it appears in patient records & orders after call ends
+    if (consultId && consultData) {
+      try {
+        await fetch("/api/prescription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            consultationId: consultId,
+            doctorName: myName,
+            diagnosis: "Live Consultation",
+            instructions: `Prescribed during live video consultation on ${new Date().toLocaleDateString("en-IN")}`,
+            medicines: updatedPrescriptions.map((m) => ({
+              name: m.name,
+              dosage: m.dosage,
+              frequency: m.frequency,
+              duration: m.duration,
+              quantity: m.maxQty,
+            })),
+          }),
+        });
+      } catch {
+        // Non-critical — prescription still shown live; logging for debugging
+        console.warn("Live prescription DB save failed (non-critical)");
+      }
+    }
   };
+
 
   // ── Order Prescription Live (Patient) ─────────────────────────────
   const testPharmacyStockId = "cm6uiklyj000f5k9vsp012rly"; // We'll just proxy the order logic for the demo, using Paracetamol or whatever's available
