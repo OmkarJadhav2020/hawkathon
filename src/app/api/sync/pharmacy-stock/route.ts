@@ -1,99 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// In-memory store as placeholder until PostgreSQL is connected
-const stockCache: Record<string, { medicineName: string; quantity: number; updatedAt: string }[]> = {};
+// GET: Fetch all pharmacy stock (or filter by ?medicine=...)
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const medicine = searchParams.get("medicine");
+    const pharmacyId = searchParams.get("pharmacyId");
 
-interface PharmacyStockItem {
-  medicineName: string;
-  genericName?: string;
-  quantity: number;
-  expiryDate?: string;
-  price?: number;
+    const where: Record<string, unknown> = {};
+    if (medicine) {
+      where.OR = [
+        { medicineName: { contains: medicine, mode: "insensitive" } },
+        { genericName: { contains: medicine, mode: "insensitive" } },
+      ];
+    }
+    if (pharmacyId) {
+      where.pharmacyId = pharmacyId;
+    }
+
+    const stock = await prisma.pharmacyStock.findMany({
+      where,
+      include: {
+        pharmacy: {
+          select: { name: true, address: true, phone: true },
+        },
+      },
+      orderBy: { medicineName: "asc" },
+    });
+
+    return NextResponse.json({ stock, total: stock.length });
+  } catch (error) {
+    console.error("Pharmacy stock GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch stock" }, { status: 500 });
+  }
 }
 
-interface StockUpdatePayload {
-  pharmacyId: string;
-  pharmacyName?: string;
-  items: PharmacyStockItem[];
-}
-
-// POST: pharmacy pushes stock update
+// POST: Pharmacy updates their stock
 export async function POST(request: NextRequest) {
   try {
-    const payload: StockUpdatePayload = await request.json();
+    const body = await request.json();
+    const { pharmacyId, items } = body;
 
-    if (!payload.pharmacyId || !payload.items?.length) {
+    if (!pharmacyId || !items?.length) {
       return NextResponse.json({ error: "Missing pharmacyId or items" }, { status: 400 });
     }
 
-    // Validate items
-    const validItems = payload.items.filter((item) => item.medicineName && item.quantity >= 0);
-    if (validItems.length === 0) {
-      return NextResponse.json({ error: "No valid items in payload" }, { status: 400 });
+    // Verify the pharmacy exists
+    const pharmacy = await prisma.pharmacyProfile.findUnique({ where: { id: pharmacyId } });
+    if (!pharmacy) {
+      return NextResponse.json({ error: "Pharmacy not found" }, { status: 404 });
     }
 
-    // Cache stock
-    stockCache[payload.pharmacyId] = validItems.map((item) => ({
-      medicineName: item.medicineName,
-      quantity: item.quantity,
-      updatedAt: new Date().toISOString(),
-    }));
+    const upserted: unknown[] = [];
+    for (const item of items) {
+      if (!item.medicineName || item.quantity == null) continue;
+      const result = await prisma.pharmacyStock.upsert({
+        where: {
+          // Use a unique constraint — add this manually if needed
+          // For now, find by pharmacyId + medicineName
+          id: item.id || "non-existent-id",
+        },
+        update: {
+          quantity: item.quantity,
+          inStock: item.quantity > 0,
+          price: item.price ?? null,
+          genericName: item.genericName ?? null,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+        },
+        create: {
+          pharmacyId,
+          medicineName: item.medicineName,
+          genericName: item.genericName ?? null,
+          quantity: item.quantity,
+          unit: item.unit ?? "tablets",
+          price: item.price ?? null,
+          inStock: item.quantity > 0,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+        },
+      });
+      upserted.push(result);
+    }
 
-    // In production:
-    // await prisma.pharmacyStock.upsert({ where: { pharmacyId_medicineName: ... }, update: {...}, create: {...} })
-
-    console.log(`[PharmacySync] Updated ${validItems.length} items for pharmacy ${payload.pharmacyId}`);
-
-    return NextResponse.json({
-      success: true,
-      pharmacyId: payload.pharmacyId,
-      itemsUpdated: validItems.length,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json({ success: true, itemsUpdated: upserted.length });
   } catch (error) {
-    console.error("Pharmacy sync error:", error);
-    return NextResponse.json({ error: "Failed to sync stock" }, { status: 500 });
+    console.error("Pharmacy stock POST error:", error);
+    return NextResponse.json({ error: "Failed to update stock" }, { status: 500 });
   }
-}
-
-// GET: check availability of a medicine across pharmacies
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const medicine = searchParams.get("medicine");
-  const pharmacyId = searchParams.get("pharmacyId");
-
-  if (pharmacyId) {
-    // Return specific pharmacy stock
-    const stock = stockCache[pharmacyId];
-    if (!stock) {
-      return NextResponse.json({ pharmacyId, items: [], message: "No stock data found. Use POST to sync stock." });
-    }
-
-    const filtered = medicine
-      ? stock.filter((s) => s.medicineName.toLowerCase().includes(medicine.toLowerCase()))
-      : stock;
-
-    return NextResponse.json({ pharmacyId, items: filtered, lastUpdated: filtered[0]?.updatedAt });
-  }
-
-  if (medicine) {
-    // Cross-pharmacy search
-    const results: { pharmacyId: string; inStock: boolean; quantity: number }[] = [];
-    for (const [pId, items] of Object.entries(stockCache)) {
-      const match = items.find((i) => i.medicineName.toLowerCase().includes(medicine.toLowerCase()));
-      if (match) {
-        results.push({ pharmacyId: pId, inStock: match.quantity > 0, quantity: match.quantity });
-      }
-    }
-    return NextResponse.json({ medicine, pharmacies: results, total: results.length });
-  }
-
-  // Return all pharmacies with stock summary
-  const summary = Object.entries(stockCache).map(([id, items]) => ({
-    pharmacyId: id,
-    totalItems: items.length,
-    lastUpdated: items[0]?.updatedAt,
-  }));
-
-  return NextResponse.json({ pharmacies: summary });
 }

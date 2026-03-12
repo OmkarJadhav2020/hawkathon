@@ -141,8 +141,12 @@ async function main() {
   ];
 
   for (const med of medicines) {
-    await prisma.pharmacyStock.create({
-      data: {
+    await prisma.pharmacyStock.upsert({
+      where: {
+        id: (await prisma.pharmacyStock.findFirst({ where: { pharmacyId: pharmacy.id, medicineName: med.name } }))?.id ?? "none",
+      },
+      update: { quantity: med.qty, price: med.price, inStock: med.inStock },
+      create: {
         pharmacyId: pharmacy.id,
         medicineName: med.name,
         genericName: med.generic,
@@ -150,11 +154,11 @@ async function main() {
         unit: med.unit,
         price: med.price,
         inStock: med.inStock,
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
     });
   }
-  console.log("✅ Pharmacy stock:", medicines.length, "medicines added");
+  console.log("✅ Pharmacy stock:", medicines.length, "medicines upserted");
 
   // ─── 3. Consultations ────────────────────────────────────────────────────
   const past1 = await prisma.consultation.create({
@@ -205,7 +209,7 @@ async function main() {
     data: [
       {
         patientId: patient.id,
-        type: "LAB",
+        type: "LAB_RESULT",
         title: "Blood Sugar Test (HbA1c)",
         description: "HbA1c: 6.2% — Pre-diabetic range. Advised lifestyle changes and monitoring.",
         doctorName: doctorUser.name,
@@ -213,7 +217,7 @@ async function main() {
       },
       {
         patientId: patient.id,
-        type: "LAB",
+        type: "LAB_RESULT",
         title: "Complete Blood Count (CBC)",
         description: "Hb: 13.2 g/dL — Mild anemia noted. Iron supplementation advised.",
         doctorName: doctorUser.name,
@@ -236,8 +240,9 @@ async function main() {
         fileUrl: null,
       },
     ],
+    skipDuplicates: true,
   });
-  console.log("✅ Health records: 4 created");
+  console.log("✅ Health records: 4 upserted");
 
   // ─── 5. Prescription ─────────────────────────────────────────────────────
   await prisma.prescription.create({

@@ -3,12 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const QUEUED = [
-  { icon: "edit_note", label: "Symptom log submitted", sub: "Cardiology Dept. Sync Pending", time: "2 min ago" },
-  { icon: "person_add", label: "Patient registration: Gurpreet Singh", sub: "Village: Haripur, Age 32", time: "15 min ago" },
-  { icon: "event_available", label: "Book consultation request", sub: "Dr. Sharma (Primary Care)", time: "1 hour ago" },
-];
-
 const WORKS_OFFLINE = [
   { icon: "description", title: "View Health Records", sub: "Cached locally. All your records available." },
   { icon: "psychology", title: "AI Symptom Checker", sub: "Offline rule-based model active." },
@@ -25,40 +19,90 @@ const NOT_OFFLINE = [
 
 export default function OfflinePage() {
   const [countdown, setCountdown] = useState(14);
-  const [retrying, setRetrying] = useState(false);
-  const lastSync = "Today 09:42 AM";
+  const [isOnline, setIsOnline] = useState(false);
+  const [checkingNow, setCheckingNow] = useState(false);
+  const lastSync = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  // Auto-detect when connectivity is restored
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Redirect back to patient dashboard when connectivity restored
+      setTimeout(() => {
+        window.location.href = "/dashboard/patient";
+      }, 1500);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Countdown auto-retry
   useEffect(() => {
     const t = setInterval(() => {
       setCountdown((c) => {
-        if (c <= 1) { clearInterval(t); return 0; }
+        if (c <= 1) {
+          // Actually check connectivity when countdown reaches 0
+          handleTryAgain();
+          return 14;
+        }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [retrying]);
+  }, []);
 
-  const handleRetry = () => {
-    setCountdown(14);
-    setRetrying((r) => !r);
+  const handleTryAgain = async () => {
+    setCheckingNow(true);
+    try {
+      // Actually attempt a network request to verify connectivity
+      await fetch("/api/health-check", { method: "HEAD", cache: "no-store" });
+      setIsOnline(true);
+      setTimeout(() => { window.location.href = "/dashboard/patient"; }, 800);
+    } catch {
+      setIsOnline(false);
+    } finally {
+      setCheckingNow(false);
+      setCountdown(14);
+    }
   };
 
   const progress = ((14 - countdown) / 14) * 125.6;
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
+      {/* Restored banner */}
+      {isOnline && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-green-500 text-white py-3 text-center font-bold flex items-center justify-center gap-2 text-sm shadow-lg">
+          <span className="material-symbols-outlined">wifi</span>
+          Connection restored! Redirecting you back...
+        </div>
+      )}
+
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <nav className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-3xl">health_and_safety</span>
             <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">Graam<span className="text-primary">Sehat</span></span>
           </div>
           <div className="flex items-center gap-4">
-            {/* Offline badge */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-full">
-              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-              <span className="text-red-600 text-xs font-bold uppercase tracking-wider">Offline</span>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isOnline ? "bg-green-50 border-green-200" : "bg-red-50 border-red-100"}`}>
+              <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500 animate-pulse"}`}></span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isOnline ? "text-green-600" : "text-red-600"}`}>
+                {isOnline ? "Online" : "Offline"}
+              </span>
             </div>
             <Link href="/dashboard/patient" className="text-slate-500 hover:text-primary transition-colors">
               <span className="material-symbols-outlined">home</span>
@@ -71,13 +115,19 @@ export default function OfflinePage() {
         {/* Hero */}
         <section className="py-14 flex flex-col items-center text-center">
           <div className="relative flex items-center justify-center w-24 h-24 mb-8">
-            <div className="w-24 h-24 rounded-full border-4 border-red-200 animate-ping absolute opacity-60"></div>
-            <div className="relative w-24 h-24 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center">
-              <span className="material-symbols-outlined text-red-500 text-5xl">wifi_off</span>
+            <div className={`w-24 h-24 rounded-full border-4 ${isOnline ? "border-green-200" : "border-red-200"} animate-ping absolute opacity-60`}></div>
+            <div className={`relative w-24 h-24 rounded-full ${isOnline ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"} border-2 flex items-center justify-center`}>
+              <span className={`material-symbols-outlined text-5xl ${isOnline ? "text-green-500" : "text-red-500"}`}>
+                {isOnline ? "wifi" : "wifi_off"}
+              </span>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">You're Offline</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Don't worry — GraamSehat works offline too</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            {isOnline ? "You're Back Online!" : "You're Offline"}
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">
+            {isOnline ? "Connection restored — redirecting you now..." : "Don't worry — GraamSehat works offline too"}
+          </p>
           <p className="text-slate-400 text-xs mt-1 uppercase tracking-wide">Last synced: {lastSync}</p>
         </section>
 
@@ -115,37 +165,17 @@ export default function OfflinePage() {
           </div>
         </section>
 
-        {/* Queued Actions */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-8">
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h2 className="font-bold text-slate-900 dark:text-white">Queued Actions ({QUEUED.length})</h2>
-            <span className="bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider">Will auto-send when online</span>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {QUEUED.map((item) => (
-              <div key={item.label} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-amber-500">pending</span>
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.label}</p>
-                    <p className="text-xs text-slate-400">{item.sub}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-slate-400 font-medium whitespace-nowrap ml-4">{item.time}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Auto Retry */}
         <section className="space-y-4">
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="material-symbols-outlined text-primary text-3xl animate-spin" style={{ animationDuration: "3s" }}>refresh</span>
               <div>
-                <p className="font-bold text-slate-800 dark:text-slate-200 leading-none">Retrying connection...</p>
+                <p className="font-bold text-slate-800 dark:text-slate-200 leading-none">
+                  {checkingNow ? "Checking connectivity..." : "Retrying connection..."}
+                </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  {countdown > 0 ? `Next attempt in ${countdown} seconds` : "Attempting now..."}
+                  {checkingNow ? "Testing network..." : countdown > 0 ? `Next attempt in ${countdown} seconds` : "Attempting now..."}
                 </p>
               </div>
             </div>
@@ -169,18 +199,19 @@ export default function OfflinePage() {
 
           <div className="flex gap-3">
             <button
-              onClick={handleRetry}
-              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+              onClick={handleTryAgain}
+              disabled={checkingNow}
+              className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <span className="material-symbols-outlined">sync</span>
-              Try Again Now
+              {checkingNow ? "Checking..." : "Try Again Now"}
             </button>
             <Link
               href="/dashboard/patient"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-primary hover:text-primary rounded-xl px-5 py-3 text-sm font-medium transition-colors flex items-center gap-2"
             >
-              <span className="material-symbols-outlined text-lg">settings</span>
-              Network Settings
+              <span className="material-symbols-outlined text-lg">home</span>
+              Dashboard
             </Link>
           </div>
         </section>

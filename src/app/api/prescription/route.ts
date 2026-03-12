@@ -1,95 +1,138 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 
-interface PrescriptionPayload {
-  patientPhone: string;
-  patientName: string;
-  doctorName: string;
-  medicines: { name: string; dosage: string }[];
-  instructions?: string;
-  prescriptionId: string;
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const payload: PrescriptionPayload = await request.json();
+    const payload = await request.json();
+    const {
+      patientPhone,
+      patientName,
+      doctorName,
+      medicines,
+      instructions,
+      consultationId,
+      diagnosis,
+    } = payload;
 
-    if (!payload.patientPhone || !payload.medicines?.length) {
-      return NextResponse.json({ error: "Missing patient phone or medicines" }, { status: 400 });
+    if (!consultationId) {
+      return NextResponse.json({ error: "consultationId is required" }, { status: 400 });
     }
 
-    // Format the SMS message (concise for trial limits)
-    const medsList = payload.medicines.map((m) => m.name).join(", ");
-    const smsBody = `GS Rx ${payload.prescriptionId}\n${payload.patientName}: ${medsList}\nView: https://graamsehat.in/rx/${payload.prescriptionId}`;
+    // Get the consultation to find patientId
+    const consultation = await prisma.consultation.findUnique({
+      where: { id: consultationId },
+      select: { patientId: true, doctorId: true },
+    });
 
-    // If Twilio is configured, send actual SMS
-    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE) {
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-      const formData = new URLSearchParams({
-        To: payload.patientPhone,
-        From: TWILIO_PHONE,
-        Body: smsBody,
-      });
+    if (!consultation) {
+      return NextResponse.json({ error: "Consultation not found" }, { status: 404 });
+    }
 
-      const twilioResponse = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64")}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+    // Check if a prescription already exists for this consultation
+    const existing = await prisma.prescription.findUnique({
+      where: { consultationId },
+    });
+
+    let prescription;
+    if (existing) {
+      // Update existing
+      prescription = await prisma.prescription.update({
+        where: { consultationId },
+        data: {
+          doctorName: doctorName ?? "Doctor",
+          diagnosis: diagnosis ?? "General",
+          instructions: instructions ?? "",
+          medicines: medicines ?? [],
+          smsPhone: patientPhone,
         },
-        body: formData.toString(),
       });
-
-      if (!twilioResponse.ok) {
-        const err = await twilioResponse.json();
-        console.error("Twilio error:", err);
-        // Still return success — prescription exists even if SMS fails
-        return NextResponse.json({
-          success: true,
-          smsSent: false,
-          smsError: err.message || "Twilio error",
-          prescriptionId: payload.prescriptionId,
-          preview: smsBody,
-        });
-      }
-
-      const twilioData = await twilioResponse.json();
-      return NextResponse.json({
-        success: true,
-        smsSent: true,
-        sid: twilioData.sid,
-        prescriptionId: payload.prescriptionId,
+    } else {
+      // Create new prescription
+      prescription = await prisma.prescription.create({
+        data: {
+          consultationId,
+          patientId: consultation.patientId,
+          doctorName: doctorName ?? "Doctor",
+          diagnosis: diagnosis ?? "General",
+          instructions: instructions ?? "",
+          medicines: medicines ?? [],
+          smsPhone: patientPhone,
+          smsDelivered: false,
+        },
       });
     }
 
-    // Twilio not configured — log and return preview
-    console.log("📱 SMS Preview (Twilio not configured):\n", smsBody);
+    // Try to send SMS if Twilio is configured
+    let smsSent = false;
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE && patientPhone) {
+      const medsList = (medicines ?? []).map((m: { name: string }) => m.name).join(", ");
+      const smsBody = `GraamSehat Rx\nPatient: ${patientName}\nDiagnosis: ${diagnosis}\nMeds: ${medsList}\nDoctor: ${doctorName}`;
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+      try {
+        const twilioResponse = await fetch(twilioUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({ To: patientPhone, From: TWILIO_PHONE, Body: smsBody }).toString(),
+        });
+        if (twilioResponse.ok) {
+          smsSent = true;
+          await prisma.prescription.update({
+            where: { id: prescription.id },
+            data: { smsDelivered: true },
+          });
+        }
+      } catch (e) {
+        console.error("Twilio SMS error:", e);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      smsSent: false,
-      smsError: "Twilio credentials not configured in .env",
-      prescriptionId: payload.prescriptionId,
-      preview: smsBody,
+      prescriptionId: prescription.id,
+      smsSent,
+      smsError: smsSent ? undefined : "Twilio not configured or failed. Prescription saved to DB.",
     });
   } catch (error) {
-    console.error("Prescription SMS error:", error);
-    return NextResponse.json({ error: "Failed to process prescription" }, { status: 500 });
+    console.error("POST /api/prescription error:", error);
+    return NextResponse.json({ error: "Failed to save prescription" }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "Missing prescription id" }, { status: 400 });
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const consultId = searchParams.get("consultId");
 
-  // In production: fetch from DB via Prisma
-  // SELECT * FROM Prescription WHERE id = id
-  return NextResponse.json({
-    id,
-    status: "ISSUED",
-    message: "Prescription found. Connect to PostgreSQL to retrieve full data.",
-  });
+    if (!id && !consultId) {
+      return NextResponse.json({ error: "Missing id or consultId" }, { status: 400 });
+    }
+
+    const prescription = await prisma.prescription.findFirst({
+      where: id ? { id } : { consultationId: consultId! },
+      include: {
+        consultation: {
+          select: {
+            patient: { select: { name: true, phone: true, village: true, bloodGroup: true } },
+          },
+        },
+      },
+    });
+
+    if (!prescription) {
+      return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(prescription);
+  } catch (error) {
+    console.error("GET /api/prescription error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }

@@ -23,12 +23,12 @@ export async function GET(request: Request) {
       include: {
         doctor: {
           include: {
-            actorProfile: true,
+            doctorProfile: true,
           },
         },
       },
       orderBy: {
-        startTime: "asc",
+        scheduledAt: "asc",
       },
     });
 
@@ -41,12 +41,12 @@ export async function GET(request: Request) {
       include: {
         doctor: {
           include: {
-            actorProfile: true, // we might need doctor name
+            doctorProfile: true, // we might need doctor name
           },
         },
       },
       orderBy: {
-        startTime: "desc",
+        scheduledAt: "desc",
       },
     });
 
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
         role: "DOCTOR",
       },
       include: {
-        actorProfile: true,
+        doctorProfile: true,
       },
     });
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         doctorId,
         status: "PENDING",
         connectionMode,
-        startTime: scheduledFor ? new Date(scheduledFor) : new Date(), // If no specific time, it's a queue booking now
+        scheduledAt: scheduledFor ? new Date(scheduledFor) : new Date(), // If no specific time, it's a queue booking now
       },
     });
 

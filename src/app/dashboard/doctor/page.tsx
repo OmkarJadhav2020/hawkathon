@@ -1,28 +1,180 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const patients = [
-  { initials: "MD", color: "bg-primary/10 text-primary", name: "Meera Deshmukh", id: "#GS-9921", time: "10:05 AM", status: "In Session", bp: "138/92", hr: "82", spo2: "98", temp: "98.6", category: "ACTIVE", age: "64F", blood: "B+", allergies: ["Penicillin"], triage: "Persistent fatigue, history of Type 2 Diabetes. Stage 1 hypertension detected." },
-  { initials: "RV", color: "bg-blue-100 text-blue-600", name: "Rahul Verma", id: "#GS-7845", time: "10:15 AM (Delayed 5m)", status: "Waiting", notes: "Hypertension", category: "ROUTINE" },
-  { initials: "SG", color: "bg-orange-100 text-orange-600", name: "Sanjay Gupta", id: "#GS-3312", time: "URGENT • 10:30 AM", status: "Urgent", notes: "Chest Pain Follow-up", category: "URGENT" },
-  { initials: "AR", color: "bg-purple-100 text-purple-600", name: "Anita Roy", id: "#GS-5501", time: "11:00 AM", status: "Waiting", notes: "New Patient • Consultation", category: "ROUTINE" },
-];
+type PatientInfo = {
+  id: string;
+  name: string;
+  village: string | null;
+  phone: string | null;
+  bloodGroup: string | null;
+  allergies: string[];
+};
 
-const scheduleItems = [
-  { time: "12:30", period: "PM", label: "Lunch Break", isHighlight: false, icon: "" },
-  { time: "01:15", period: "PM", label: "Video Consult", isHighlight: true, icon: "video_chat" },
-  { time: "01:45", period: "PM", label: "Siddharth N.", isHighlight: false, icon: "" },
-];
+type Consultation = {
+  id: string;
+  status: string;
+  symptoms: string[];
+  triageCategory: string | null;
+  notes: string | null;
+  connectionMode: string | null;
+  createdAt: string;
+  patient: PatientInfo;
+  prescription: { id: string } | null;
+};
 
 export default function DoctorDashboard() {
-  const [activePatient] = useState(patients[0]);
-  const [activeTab, setActiveTab] = useState("notes");
-  const [consultationNote, setConsultationNote] = useState("");
+  const router = useRouter();
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [activeConsult, setActiveConsult] = useState<Consultation | null>(null);
+  const [activeTab, setActiveTab] = useState<"notes" | "prescription" | "labs">("notes");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Consultation[]>([]);
+  const [doctorName, setDoctorName] = useState("Dr. Physician");
+  const searchRef = useRef<NodeJS.Timeout | null>(null);
+
+  const doctorId = typeof window !== "undefined"
+    ? (localStorage.getItem("doctorId") ?? localStorage.getItem("userId") ?? "cmmnpw2cd0002f770mhrgdj2k")
+    : "cmmnpw2cd0002f770mhrgdj2k";
+
+  useEffect(() => {
+    // Read doctor name from localStorage
+    if (typeof window !== "undefined") {
+      const name = localStorage.getItem("userName");
+      if (name) setDoctorName(name);
+    }
+  }, []);
+
+  const fetchConsultations = async () => {
+    try {
+      const res = await fetch(`/api/consultations?doctorId=${doctorId}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data: Consultation[] = await res.json();
+      setConsultations(data);
+      if (data.length > 0 && !activeConsult) {
+        const active = data.find((c) => c.status === "IN_PROGRESS") ?? data[0];
+        setActiveConsult(active);
+        setNotes(active.notes ?? "");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConsultations(); }, []);
+
+  // Patient search with debounce
+  useEffect(() => {
+    if (!search.trim()) { setSearchResults([]); return; }
+    if (searchRef.current) clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => {
+      const filtered = consultations.filter((c) =>
+        c.patient.name.toLowerCase().includes(search.toLowerCase()) ||
+        (c.patient.phone ?? "").includes(search) ||
+        (c.patient.village ?? "").toLowerCase().includes(search.toLowerCase())
+      );
+      setSearchResults(filtered);
+    }, 300);
+  }, [search, consultations]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleStartConsultation = async () => {
+    if (!activeConsult || activeConsult.status !== "PENDING") return;
+    setStarting(true);
+    try {
+      const res = await fetch(`/api/consultations?id=${activeConsult.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "IN_PROGRESS", doctorId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      showToast(`Consultation started with ${activeConsult.patient.name}`);
+      await fetchConsultations();
+      // Update active consult with new status
+      setActiveConsult((prev) => prev ? { ...prev, status: "IN_PROGRESS" } : null);
+    } catch {
+      showToast("Failed to start consultation.");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const handleSaveRecord = async () => {
+    if (!activeConsult) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/consultations?id=${activeConsult.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes, status: activeConsult.status }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      showToast("Notes saved successfully!");
+      fetchConsultations();
+    } catch {
+      showToast("Failed to save notes.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEndConsultation = async () => {
+    if (!activeConsult) return;
+    if (!confirm(`End consultation with ${activeConsult.patient.name}?`)) return;
+    try {
+      await fetch(`/api/consultations?id=${activeConsult.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED", notes }),
+      });
+      showToast("Consultation completed and saved!");
+      setActiveConsult(null);
+      setNotes("");
+      fetchConsultations();
+    } catch {
+      showToast("Failed to end consultation.");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
+  };
+
+  const handlePrint = () => {
+    if (!activeConsult) return;
+    window.print();
+  };
+
+  const pending = consultations.filter((c) => c.status === "PENDING");
+  const inProgress = consultations.find((c) => c.status === "IN_PROGRESS");
+  const completed = consultations.filter((c) => c.status === "COMPLETED").slice(0, 5);
+
+  const displayList = search.trim() ? searchResults : [...(inProgress ? [inProgress] : []), ...pending];
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2">
+          <span className="material-symbols-outlined text-green-400">check_circle</span>
+          <span className="font-medium text-sm">{toast}</span>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-3">
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
@@ -33,299 +185,398 @@ export default function DoctorDashboard() {
             </div>
             <nav className="hidden md:flex items-center gap-6">
               <a className="text-sm font-semibold text-primary border-b-2 border-primary pb-1" href="#">Dashboard</a>
-              <a className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Patient Records</a>
-              <a className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="#">Telemedicine</a>
+              <Link className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="/dashboard/patient/records">Patient Records</Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative hidden sm:block">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
-              <input className="pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search patient ID..." type="text" />
-            </div>
-            <button className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800" />
-            </button>
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
               <div className="text-right hidden lg:block">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Dr. Ananya Sharma</p>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Senior Cardiologist</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">{doctorName}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">General Physician</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-bold">AS</div>
+              <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-bold">
+                {doctorName.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+              </div>
+              <button onClick={handleLogout} className="ml-1 text-slate-400 hover:text-red-500 transition-colors" title="Logout">
+                <span className="material-symbols-outlined">logout</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full grid grid-cols-12 gap-6">
-        {/* Patient Queue */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">group_work</span> Patient Queue
-              </h3>
-              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">8 WAITING</span>
-            </div>
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full grid grid-cols-12 gap-6">
+          {/* Patient Queue */}
+          <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col" style={{ maxHeight: "calc(100vh - 100px)" }}>
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">group_work</span> Patient Queue
+                </h3>
+                <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">{pending.length} WAITING</span>
+              </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-hide">
-              {/* Active Patient */}
-              <div className="p-4 border-b border-primary/20 bg-primary/5">
-                <p className="text-[10px] font-bold text-primary uppercase mb-2 flex items-center gap-1">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                  </span>
-                  Currently In Session
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${activePatient.color}`}>
-                    {activePatient.initials}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{activePatient.name}</p>
-                    <p className="text-xs text-slate-500">{activePatient.id}</p>
-                  </div>
+              {/* Search */}
+              <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-sm">search</span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search patients..."
+                    className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
+                  />
+                  {search && (
+                    <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600">
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Queue */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {patients.slice(1).map((p) => (
-                  <div key={p.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-[10px] font-semibold ${p.category === "URGENT" ? "text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 rounded" : "text-slate-400"}`}>
-                        {p.time}
+              <div className="flex-1 overflow-y-auto">
+                {/* In Progress */}
+                {!search && inProgress && (
+                  <div
+                    className={`p-4 border-b border-primary/20 bg-primary/5 cursor-pointer ${activeConsult?.id === inProgress.id ? "border-l-2 border-l-primary" : ""}`}
+                    onClick={() => { setActiveConsult(inProgress); setNotes(inProgress.notes ?? ""); }}
+                  >
+                    <p className="text-[10px] font-bold text-primary uppercase mb-2 flex items-center gap-1">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                       </span>
-                    </div>
+                      Currently In Session
+                    </p>
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${p.color}`}>{p.initials}</div>
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold bg-primary/10 text-primary">
+                        {inProgress.patient.name.slice(0, 2).toUpperCase()}
+                      </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{p.name}</p>
-                        <p className="text-xs text-slate-500">{p.notes}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{inProgress.patient.name}</p>
+                        <p className="text-xs text-slate-500">{inProgress.patient.village ?? "—"}</p>
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* Pending / Search Queue */}
+                {displayList.filter((c) => c.status !== "IN_PROGRESS" || !!search).map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => { setActiveConsult(c); setNotes(c.notes ?? ""); setSearch(""); setSearchResults([]); }}
+                    className={`p-4 border-b border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${activeConsult?.id === c.id ? "bg-slate-50 dark:bg-slate-800/50 border-l-2 border-l-primary" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        {c.patient.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{c.patient.name}</p>
+                        <p className="text-xs text-slate-500">{c.symptoms?.slice(0, 2).join(", ") || "No symptoms noted"}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status === "IN_PROGRESS" ? "bg-green-50 text-green-600" : c.status === "COMPLETED" ? "bg-slate-100 text-slate-500" : "bg-amber-50 text-amber-600"}`}>
+                        {c.status.replace("_", " ")}
+                      </span>
+                    </div>
+                  </div>
                 ))}
-              </div>
-            </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
-              <button className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all">
-                <span className="material-symbols-outlined">play_circle</span> Start Consultation
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Workstation */}
-        <div className="col-span-12 lg:col-span-6 flex flex-col gap-6">
-          {/* Patient header */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-primary/20 border-2 border-primary flex items-center justify-center text-primary text-2xl font-black">
-                  {activePatient.initials}
-                </div>
-                <div>
-                  <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{activePatient.name}</h1>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                    <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">calendar_today</span> {activePatient.age}
-                    </span>
-                    {activePatient.blood && (
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">bloodtype</span> {activePatient.blood}
-                      </span>
-                    )}
-                    {activePatient.allergies?.map((a) => (
-                      <span key={a} className="text-xs font-medium text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">warning</span> {a} Allergy
-                      </span>
+                {/* Completed section */}
+                {!search && completed.length > 0 && (
+                  <div className="pt-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase px-4 py-2 border-t border-slate-100 dark:border-slate-800">Recent Completed</p>
+                    {completed.map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => { setActiveConsult(c); setNotes(c.notes ?? ""); }}
+                        className={`p-3 border-b border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors opacity-70 hover:opacity-100 ${activeConsult?.id === c.id ? "bg-slate-50 dark:bg-slate-800/50" : ""}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-500">
+                            {c.patient.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">{c.patient.name}</p>
+                          </div>
+                          <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">DONE</span>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Link href="/dashboard/patient/consultation" className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <span className="material-symbols-outlined">videocam</span>
-                </Link>
-                <button className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <span className="material-symbols-outlined">print</span>
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold rounded-xl text-sm">
-                  <span className="material-symbols-outlined text-sm">save</span> Save Record
-                </button>
-              </div>
-            </div>
+                )}
 
-            {/* Vitals */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: "Blood Pressure", value: activePatient.bp, status: "High", statusColor: "text-red-500" },
-                { label: "Heart Rate", value: `${activePatient.hr}`, unit: "bpm", statusColor: "text-slate-500" },
-                { label: "SpO2", value: `${activePatient.spo2}`, unit: "%", statusColor: "text-emerald-500" },
-                { label: "Temp", value: `${activePatient.temp}`, unit: "°F", statusColor: "text-slate-500" },
-              ].map((v) => (
-                <div key={v.label} className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{v.label}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold text-slate-900 dark:text-white">{v.value}</span>
-                    {v.unit && <span className={`text-[10px] font-bold ${v.statusColor}`}>{v.unit}</span>}
-                    {v.status && <span className={`text-[10px] font-bold ${v.statusColor} flex items-center`}><span className="material-symbols-outlined text-xs">arrow_upward</span>{v.status}</span>}
+                {consultations.length === 0 && (
+                  <div className="p-8 text-center">
+                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">manage_accounts</span>
+                    <p className="text-sm text-slate-400">No patients in queue.</p>
+                    <p className="text-xs text-slate-400 mt-1">Patients will appear here when they book a consultation.</p>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Notes / Prescription Tabs */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-1 overflow-hidden flex flex-col">
-            <div className="flex border-b border-slate-100 dark:border-slate-800">
-              {["notes", "prescription", "lab"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3 text-sm font-bold capitalize transition-colors ${activeTab === tab ? "border-b-2 border-primary text-primary bg-primary/5" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-                >
-                  {tab === "lab" ? "Lab Orders" : tab === "prescription" ? "Prescriptions" : "Consultation Notes"}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-6 flex-1 space-y-6 overflow-y-auto">
-              {activeTab === "notes" && (
-                <>
-                  <div className="relative">
-                    <div className="absolute -top-3 left-3 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-primary/20 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-primary text-xs">auto_awesome</span>
-                      <span className="text-[10px] font-bold text-primary tracking-wide">AI-GENERATED SUMMARY</span>
-                    </div>
-                    <div className="w-full p-5 pt-7 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-sm leading-relaxed italic text-slate-700 dark:text-slate-300">
-                      {activePatient.triage || "No AI triage data available for this patient."}
-                    </div>
-                  </div>
+          {/* Active Patient Workstation */}
+          {activeConsult ? (
+            <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+              {/* Patient summary header */}
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-primary/5 to-transparent">
+                <div className="flex justify-between items-start gap-4">
                   <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center justify-between">
-                      Clinical Observations
-                      <span className="material-symbols-outlined text-primary text-sm cursor-pointer">mic</span>
-                    </h4>
-                    <textarea
-                      value={consultationNote}
-                      onChange={(e) => setConsultationNote(e.target.value)}
-                      className="w-full h-48 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-primary/50 outline-none resize-none"
-                      placeholder="Type your observations here..."
-                    />
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeConsult.patient.name}</h2>
+                    <p className="text-sm text-slate-500">
+                      ID: {activeConsult.id.slice(-8).toUpperCase()} • Blood: {activeConsult.patient.bloodGroup ?? "Unknown"} • {activeConsult.patient.village ?? "—"}
+                    </p>
+                    {activeConsult.patient.allergies.length > 0 && (
+                      <p className="text-xs font-bold text-red-600 mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">warning</span>
+                        Allergies: {activeConsult.patient.allergies.join(", ")}
+                      </p>
+                    )}
                   </div>
-                </>
-              )}
-              {activeTab === "prescription" && (
-                <div className="text-center text-slate-400 py-8">
-                  <span className="material-symbols-outlined text-4xl">prescriptions</span>
-                  <p className="mt-2 text-sm">Prescription module — add medicines and dosage here.</p>
-                  <Link href="/dashboard/prescription/new" className="mt-4 inline-block px-6 py-3 bg-primary text-white font-bold rounded-xl text-sm">
-                    Create Prescription
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${activeConsult.status === "IN_PROGRESS" ? "bg-green-100 text-green-700" : activeConsult.status === "COMPLETED" ? "bg-slate-100 text-slate-500" : "bg-amber-100 text-amber-700"}`}>
+                      {activeConsult.status.replace("_", " ")}
+                    </span>
+                    {/* Start Consultation button for PENDING */}
+                    {activeConsult.status === "PENDING" && (
+                      <button
+                        onClick={handleStartConsultation}
+                        disabled={starting}
+                        className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full hover:bg-green-700 transition-all disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">{starting ? "progress_activity" : "play_arrow"}</span>
+                        {starting ? "Starting..." : "Start"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {activeConsult.symptoms.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {activeConsult.symptoms.map((s) => (
+                      <span key={s} className="px-2 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg border border-red-100">{s}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Tabs */}
+              <div className="flex border-b border-slate-200 dark:border-slate-800">
+                {(["notes", "prescription", "labs"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3 text-sm font-bold capitalize transition-colors ${activeTab === tab ? "border-b-2 border-primary text-primary" : "text-slate-500 hover:text-slate-700"}`}>
+                    {tab === "prescription" ? "E-Prescription" : tab === "labs" ? "Lab Orders" : "Notes"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 p-6 overflow-y-auto">
+                {activeTab === "notes" && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Chief Complaint</label>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
+                        {activeConsult.symptoms.join(", ") || "Patient reported general discomfort."}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Consultation Notes</label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full h-40 text-sm p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl resize-none outline-none focus:ring-2 focus:ring-primary/50"
+                        placeholder="Enter clinical notes, diagnosis, and observations here..."
+                        disabled={activeConsult.status === "COMPLETED"}
+                      />
+                    </div>
+                    {activeConsult.status !== "COMPLETED" && (
+                      <div className="flex gap-3">
+                        <button onClick={handleSaveRecord} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm disabled:opacity-50">
+                          {saving ? "Saving..." : "Save Record"} <span className="material-symbols-outlined text-sm">save</span>
+                        </button>
+                        {activeConsult.status === "PENDING" && (
+                          <button onClick={handleStartConsultation} disabled={starting} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm disabled:opacity-50">
+                            {starting ? "Starting..." : "Start Consultation"} <span className="material-symbols-outlined text-sm">play_arrow</span>
+                          </button>
+                        )}
+                        {activeConsult.status === "IN_PROGRESS" && (
+                          <button onClick={handleEndConsultation} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:opacity-90 transition-all text-sm shadow-sm">
+                            End Consultation <span className="material-symbols-outlined text-sm">check_circle</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {activeConsult.status === "COMPLETED" && activeConsult.notes && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        This consultation is completed.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === "prescription" && (
+                  <div className="space-y-4">
+                    {activeConsult.prescription ? (
+                      <div className="text-center py-8">
+                        <span className="material-symbols-outlined text-5xl text-green-400 mb-4 block">check_circle</span>
+                        <p className="text-slate-600 text-sm mb-4 font-bold">Prescription already issued for this consultation.</p>
+                        <Link
+                          href={`/dashboard/prescription?consultId=${activeConsult.id}`}
+                          className="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all text-sm"
+                        >
+                          View Prescription
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">medication</span>
+                        <p className="text-slate-500 text-sm mb-4">Create a new digital prescription for this patient.</p>
+                        <div className="flex flex-col gap-3 items-center">
+                          <Link
+                            href={`/dashboard/prescription/new?consultId=${activeConsult.id}&patientName=${encodeURIComponent(activeConsult.patient.name)}`}
+                            className="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-all text-sm flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                            Create New Prescription
+                          </Link>
+                          <Link
+                            href={`/dashboard/prescription?consultId=${activeConsult.id}`}
+                            className="text-primary text-sm font-bold hover:underline flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            View Existing (if any)
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === "labs" && (
+                  <div className="space-y-4">
+                    <div className="text-center py-8">
+                      <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">biotech</span>
+                      <p className="text-slate-500 text-sm mb-4">Lab order form. Common tests:</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        "Complete Blood Count (CBC)",
+                        "Blood Glucose (Fasting)",
+                        "Urine Routine",
+                        "Liver Function Test",
+                        "Thyroid Function (TSH)",
+                        "Chest X-Ray",
+                        "ECG",
+                        "HbA1c",
+                      ].map((test) => (
+                        <button
+                          key={test}
+                          onClick={() => showToast(`Lab order for "${test}" noted in consultation.`)}
+                          className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-primary hover:bg-primary/5 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-primary text-sm block mb-1">science</span>
+                          {test}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="col-span-12 lg:col-span-6 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">face</span>
+                <p className="text-slate-500 text-sm">Select a patient from the queue to begin.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Right Panel */}
+          <div className="col-span-12 lg:col-span-3 flex flex-col gap-4">
+            {activeConsult && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+                <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-slate-400">info</span> Patient Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  {[
+                    { label: "Phone", value: activeConsult.patient.phone ?? "—" },
+                    { label: "Village", value: activeConsult.patient.village ?? "—" },
+                    { label: "Blood Group", value: activeConsult.patient.bloodGroup ?? "Unknown" },
+                    { label: "Mode", value: activeConsult.connectionMode ?? "VIDEO" },
+                    { label: "Triage", value: activeConsult.triageCategory?.replace("_", " ") ?? "Not triaged" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex justify-between">
+                      <span className="text-slate-400">{item.label}</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                  <button
+                    onClick={handlePrint}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">print</span>Print
+                  </button>
+                  <Link
+                    href={`/dashboard/patient/records`}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">folder_open</span>Records
                   </Link>
                 </div>
-              )}
-              {activeTab === "lab" && (
-                <div className="text-center text-slate-400 py-8">
-                  <span className="material-symbols-outlined text-4xl">lab_panel</span>
-                  <p className="mt-2 text-sm">Lab order module — order diagnostic tests here.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
-          {/* History */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
-            <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">history</span> Recent History
-            </h3>
-            <div className="space-y-4">
-              {[
-                { date: "Oct 12, 2023", title: "Diabetic Review", note: "HbA1c: 6.8% - Stable" },
-                { date: "Aug 05, 2023", title: "Acute Bronchitis", note: "Resolved with Azithromycin" },
-                { date: "May 19, 2023", title: "Annual Physical", note: "No abnormal findings" },
-              ].map((h, i) => (
-                <div key={i} className="relative pl-6 border-l-2 border-slate-100 dark:border-slate-800 py-1">
-                  <div className={`absolute left-[-5px] top-1.5 w-2 h-2 rounded-full ${i === 0 ? "bg-primary shadow-[0_0_0_3px_rgba(0,201,167,0.15)]" : "bg-slate-300 dark:bg-slate-700"}`} />
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">{h.date}</p>
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{h.title}</p>
-                  <p className="text-[10px] text-slate-500 italic mt-0.5">{h.note}</p>
-                </div>
-              ))}
-            </div>
-            <button className="w-full mt-6 py-2 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20">
-              View Full Record
-            </button>
-          </div>
-
-          {/* Schedule */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">calendar_month</span> Schedule
-              </h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Today</span>
-            </div>
-            <div className="space-y-3">
-              {scheduleItems.map((item, i) => (
-                <div key={i} className={`flex items-center gap-3 p-2.5 rounded-lg border ${item.isHighlight ? "border-primary/20 bg-primary/5" : "border-slate-50 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50"}`}>
-                  <div className="text-center min-w-[40px]">
-                    <p className={`text-xs font-bold leading-none ${item.isHighlight ? "text-primary" : "text-slate-900 dark:text-white"}`}>{item.time}</p>
-                    <p className={`text-[8px] font-bold uppercase ${item.isHighlight ? "text-primary/60" : "text-slate-400"}`}>{item.period}</p>
-                  </div>
-                  <div className={`flex-1 h-6 border-l ${item.isHighlight ? "border-primary/20" : "border-slate-200 dark:border-slate-700"} pl-3 flex items-center justify-between`}>
-                    <p className={`text-xs ${item.isHighlight ? "font-bold text-slate-900 dark:text-white" : "font-medium text-slate-600 dark:text-slate-400"}`}>{item.label}</p>
-                    {item.icon && <span className="material-symbols-outlined text-primary text-sm">{item.icon}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-              <p className="text-[10px] font-bold text-primary uppercase leading-tight">Efficiency</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white">92%</p>
-              <div className="w-full bg-white/50 h-1 rounded-full mt-2">
-                <div className="bg-primary h-1 rounded-full" style={{ width: "92%" }} />
               </div>
-            </div>
-            <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-              <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">Patient Sat.</p>
-              <p className="text-xl font-black text-white">4.9</p>
-              <div className="flex gap-0.5 mt-2">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <span key={s} className="material-symbols-outlined text-[10px] text-yellow-500">star</span>
+            )}
+
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-3">Quick Actions</h4>
+              <div className="space-y-2">
+                {[
+                  { icon: "video_call", label: "Start Video Call", action: () => showToast("Video call feature requires WebRTC setup. Coming soon.") },
+                  { icon: "medication", label: "Write Prescription", action: () => { if (activeConsult) setActiveTab("prescription"); else showToast("Select a patient first."); } },
+                  { icon: "phone", label: "Call Patient", action: () => activeConsult ? (window.location.href = `tel:${activeConsult.patient.phone}`) : showToast("Select a patient first.") },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={item.action}
+                    className="w-full flex items-center gap-3 text-left p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-primary">{item.icon}</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </main>
 
-      {/* Status Bar */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Online</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm text-slate-400">cloud_done</span>
-              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Auto-save: 2 min ago</span>
+            {/* Today's summary */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-3">Today&apos;s Summary</h4>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-amber-50 rounded-lg">
+                  <p className="text-xl font-black text-amber-600">{pending.length}</p>
+                  <p className="text-[10px] text-amber-500 font-bold">Waiting</p>
+                </div>
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <p className="text-xl font-black text-green-600">{inProgress ? 1 : 0}</p>
+                  <p className="text-[10px] text-green-500 font-bold">Active</p>
+                </div>
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <p className="text-xl font-black text-slate-600">{completed.length}</p>
+                  <p className="text-[10px] text-slate-500 font-bold">Done</p>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="text-[10px] font-medium text-slate-400">GraamSehat v1.0 (Clinical)</p>
-        </div>
-      </footer>
+        </main>
+      )}
     </div>
   );
 }

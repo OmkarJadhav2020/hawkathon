@@ -28,52 +28,94 @@ export default function SymptomChecker() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+
+    // Handle action pills that should navigate
+    if (text === "Book Teleconsult") {
+      window.location.href = "/dashboard/patient/appointments";
+      return;
+    }
+    if (text === "Find Pharmacy") {
+      window.location.href = "/dashboard/patient/pharmacy";
+      return;
+    }
+
     const userMsg: Message = { role: "user", content: text, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
     setMessages((prev) => [...prev, userMsg]);
-    if (!collectedSymptoms.includes(text)) setCollectedSymptoms((prev) => [...prev, text]);
+    const updatedSymptoms = collectedSymptoms.includes(text) ? collectedSymptoms : [...collectedSymptoms, text];
+    if (!collectedSymptoms.includes(text)) setCollectedSymptoms(updatedSymptoms);
     setInput("");
     setLoading(true);
     setStep((s) => Math.min(s + 1, 5));
 
-    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      // Call the real Gemini AI triage API
+      const res = await fetch("/api/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symptoms: updatedSymptoms, message: text, step }),
+      });
 
-    let aiResponse: Message;
-    let result: TriageResult = null;
+      let aiResponse: Message;
+      let result: TriageResult = triageResult;
 
-    if (step >= 3) {
-      // Mock AI triage
-      result = {
-        category: "TELECONSULT",
-        probability: 65,
-        condition: "Common Flu / Viral Fever",
-        description: "Based on your symptoms, we recommend a teleconsultation with a doctor. Rest and stay hydrated in the meantime.",
-      };
-      setTriageResult(result);
-      aiResponse = {
+      if (res.ok) {
+        const data = await res.json();
+
+        // If the API returns a triage result, set it
+        if (data.triage) {
+          result = data.triage as TriageResult;
+          setTriageResult(result);
+        }
+
+        aiResponse = {
+          role: "ai",
+          content: data.message || "Thank you. Is there anything else you'd like to share about your condition?",
+          pills: data.pills || (data.triage ? ["Book Teleconsult", "Find Pharmacy", "Home Care Tips"] : undefined),
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+      } else {
+        // Graceful fallback if API fails
+        aiResponse = {
+          role: "ai",
+          content: step >= 3
+            ? "Based on what you've described, this may need a doctor's attention. Please book a teleconsultation."
+            : step === 2
+            ? "I see. Have you also experienced any breathing difficulty, chest pain, or fever above 102°F?"
+            : "How long have you been feeling this way?",
+          pills: step >= 3
+            ? ["Book Teleconsult", "Find Pharmacy"]
+            : step === 2
+            ? ["Yes, breathing difficulty", "Yes, high fever", "No, none of these"]
+            : ["Since today", "1–2 days", "More than a week"],
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+
+        // Set a fallback triage after step 3 even if API fails
+        if (step >= 3 && !triageResult) {
+          setTriageResult({
+            category: "TELECONSULT",
+            probability: 70,
+            condition: "Unspecified — Doctor Advised",
+            description: "Our AI could not complete a full assessment. Please consult a doctor.",
+          });
+        }
+      }
+
+      setMessages((prev) => [...prev, aiResponse]);
+    } catch (error) {
+      console.error("Triage API error:", error);
+      const fallbackMsg: Message = {
         role: "ai",
-        content: "Based on the information provided, I've completed an initial assessment. Please review the triage result on the right. Would you like to book a teleconsultation with a doctor now?",
-        pills: ["Book Teleconsult", "Get Home Care Tips", "Find Pharmacy"],
+        content: "I'm having trouble connecting to the AI service. Please try again or book an appointment directly.",
+        pills: ["Book Teleconsult"],
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-    } else if (step === 2) {
-      aiResponse = {
-        role: "ai",
-        content: "Thank you for sharing. Have you noticed any of the following along with your symptoms?",
-        pills: ["Difficulty Breathing", "Chest Pain", "Loss of Smell/Taste", "Sore Throat", "None of these"],
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-    } else {
-      aiResponse = {
-        role: "ai",
-        content: "I understand. How long have you been experiencing these symptoms?",
-        pills: ["Since today", "1-2 days", "3-5 days", "More than a week"],
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
+      setMessages((prev) => [...prev, fallbackMsg]);
+    } finally {
+      setLoading(false);
     }
-
-    setMessages((prev) => [...prev, aiResponse]);
-    setLoading(false);
   };
+
 
   const categoryColors = {
     HOME_CARE: { bg: "bg-green-50 dark:bg-green-900/20", text: "text-green-600", icon: "home_health", label: "Home Care" },
