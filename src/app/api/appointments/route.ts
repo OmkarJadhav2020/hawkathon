@@ -97,3 +97,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to book appointment" }, { status: 500 });
   }
 }
+// PATCH /api/appointments - Cancel or Reschedule an appointment
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, action, scheduledAt } = body;
+
+    if (!id || !action) {
+      return NextResponse.json({ error: "id and action are required" }, { status: 400 });
+    }
+
+    if (action === "cancel") {
+      await prisma.consultation.update({
+        where: { id },
+        data: { status: "COMPLETED", notes: "Cancelled by patient" },
+      });
+      return NextResponse.json({ success: true, message: "Appointment cancelled successfully" });
+    }
+
+    if (action === "reschedule") {
+      if (!scheduledAt) {
+        return NextResponse.json({ error: "scheduledAt is required for reschedule" }, { status: 400 });
+      }
+      await prisma.consultation.update({
+        where: { id },
+        data: { scheduledAt: new Date(scheduledAt) },
+      });
+      return NextResponse.json({ success: true, message: "Appointment rescheduled successfully" });
+    }
+
+    return NextResponse.json({ error: "Invalid action. Use cancel or reschedule" }, { status: 400 });
+  } catch (error) {
+    console.error("API Error - PATCH /api/appointments:", error);
+    return NextResponse.json({ error: "Failed to update appointment" }, { status: 500 });
+  }
+}

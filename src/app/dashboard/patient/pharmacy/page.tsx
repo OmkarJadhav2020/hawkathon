@@ -11,10 +11,7 @@ type Medicine = {
   unit: string;
   price: number | null;
   inStock: boolean;
-  pharmacy: {
-    name: string;
-    address: string;
-  };
+  pharmacy: { name: string; address: string };
 };
 
 const stockColor = (inStock: boolean, qty: number) =>
@@ -32,6 +29,12 @@ export default function PharmacyPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState<string[]>([]);
+  const [ordered, setOrdered] = useState<string[]>([]);
+  const [addressModal, setAddressModal] = useState<Medicine | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
 
   const fetchMedicines = useCallback(async (query = "") => {
     setLoading(true);
@@ -48,9 +51,7 @@ export default function PharmacyPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchMedicines();
-  }, [fetchMedicines]);
+  useEffect(() => { fetchMedicines(); }, [fetchMedicines]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,19 +60,93 @@ export default function PharmacyPage() {
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleOrderClick = (medicine: Medicine) => {
+    if (!userId) {
+      showToast("Please log in to place an order.");
+      return;
+    }
+    if (ordering.includes(medicine.id) || ordered.includes(medicine.id)) return;
+    setAddressModal(medicine);
+  };
+
+  const confirmOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !addressModal) return;
+    if (!deliveryAddress.trim()) {
+      showToast("Please enter a valid delivery address.");
+      return;
+    }
+
+    const medicine = addressModal;
+    setAddressModal(null);
+
+    setOrdering((prev) => [...prev, medicine.id]);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: userId,
+          pharmacyStockId: medicine.id,
+          quantity: 1,
+          deliveryAddress: deliveryAddress.trim()
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Order failed");
+      }
+      setOrdered((prev) => [...prev, medicine.id]);
+      showToast(`✅ Order placed for ${medicine.medicineName} at ${medicine.pharmacy.name}!`);
+    } catch (err) {
+      showToast(`❌ ${err instanceof Error ? err.message : "Failed to place order. Try again."}`);
+    } finally {
+      setOrdering((prev) => prev.filter((id) => id !== medicine.id));
+    }
   };
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 animate-fade-in flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] animate-fade-in flex items-center gap-2">
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
 
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+      {/* Address Modal */}
+      {addressModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Confirm Delivery Address</h3>
+              <button onClick={() => setAddressModal(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={confirmOrder} className="p-6">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Ordering: <span className="text-primary font-bold">{addressModal.medicineName}</span></p>
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">Deliver To:</label>
+              <textarea
+                required
+                className="w-full h-24 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/40 outline-none resize-none"
+                placeholder="Enter full home address or village..."
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+              ></textarea>
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setAddressModal(null)} className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-opacity">Confirm Order</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-4">
           <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -79,7 +154,7 @@ export default function PharmacyPage() {
           <span className="material-symbols-outlined text-primary text-2xl">local_pharmacy</span>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Find Medicine</h1>
-            <p className="text-xs text-slate-500">Check real-time availability at registered pharmacies</p>
+            <p className="text-xs text-slate-500">Check real-time availability & order from registered pharmacies</p>
           </div>
         </div>
       </header>
@@ -113,7 +188,7 @@ export default function PharmacyPage() {
               </div>
             ) : medicines.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
-                <span className="material-symbols-outlined text-4xl mb-2">medication_liquid</span>
+                <span className="material-symbols-outlined text-4xl mb-2 block">medication_liquid</span>
                 <p className="text-sm">{search ? `No medicines found for "${search}"` : "No stock data available."}</p>
               </div>
             ) : (
@@ -144,13 +219,25 @@ export default function PharmacyPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">{m.pharmacy.name}</td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => showToast(`Order placed for ${m.medicineName} at ${m.pharmacy.name}. Contact: ${m.pharmacy.address}`)}
-                          disabled={!m.inStock}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${m.inStock ? "text-primary border border-primary/20 hover:bg-primary/5" : "text-slate-300 border border-slate-100 cursor-not-allowed"}`}
-                        >
-                          {m.inStock ? "Order Now" : "Unavailable"}
-                        </button>
+                        {ordered.includes(m.id) ? (
+                          <span className="text-xs font-bold text-green-600 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check_circle</span> Ordered
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleOrderClick(m)}
+                            disabled={!m.inStock || ordering.includes(m.id)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                              m.inStock
+                                ? ordering.includes(m.id)
+                                  ? "bg-primary/20 text-primary cursor-wait"
+                                  : "text-primary border border-primary/20 hover:bg-primary hover:text-white"
+                                : "text-slate-300 border border-slate-100 cursor-not-allowed"
+                            }`}
+                          >
+                            {ordering.includes(m.id) ? "Ordering..." : m.inStock ? "Order Now" : "Unavailable"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -160,21 +247,22 @@ export default function PharmacyPage() {
           </div>
         </div>
 
+        {/* My Orders Link */}
+        <div className="mt-4 flex justify-end">
+          <Link href="/dashboard/patient/orders" className="text-primary text-sm font-bold hover:underline flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">receipt_long</span> View My Orders
+          </Link>
+        </div>
+
         {/* Home Delivery CTA */}
         <div className="mt-6 p-6 bg-slate-900 dark:bg-slate-800 text-white rounded-xl flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <span className="material-symbols-outlined text-yellow-400 text-3xl">delivery_dining</span>
             <div>
-              <h3 className="font-bold">Free Home Delivery</h3>
-              <p className="text-sm text-slate-300">Upload your prescription and we will deliver to your door within 24 hours.</p>
+              <h3 className="font-bold">Home Delivery Available</h3>
+              <p className="text-sm text-slate-300">Order above and our pharmacy partner will deliver to your village within 24 hours.</p>
             </div>
           </div>
-          <button
-            onClick={() => showToast("Home delivery request submitted! An ASHA worker will contact you shortly.")}
-            className="bg-primary text-white font-bold px-5 py-3 rounded-xl hover:opacity-90 whitespace-nowrap text-sm"
-          >
-            Request Delivery
-          </button>
         </div>
       </main>
     </div>

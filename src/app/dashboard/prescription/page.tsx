@@ -149,7 +149,7 @@ function PrescriptionContent() {
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-2">
           <span className="material-symbols-outlined text-green-400">check_circle</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>

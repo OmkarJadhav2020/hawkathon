@@ -8,8 +8,8 @@
   --color-pharmacy: #FFE66D;
   --color-asha: #ec5b13;
 
-  --font-family-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-family-display: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-family-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-family-display: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
 
   --animate-pulse-ring: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   --animate-fade-in: fade-in 0.3s ease-out;
@@ -64,7 +64,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  font-family: 'Public Sans', sans-serif;
+  font-family: var(--font-public-sans), sans-serif;
   background-color: var(--color-background-light);
   -webkit-font-smoothing: antialiased;
 }

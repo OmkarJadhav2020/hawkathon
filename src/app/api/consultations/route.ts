@@ -68,7 +68,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { notes, status, triageCategory, doctorId } = body;
+    const { notes, status, triageCategory, doctorId, callStatus } = body;
 
     const updated = await prisma.consultation.update({
       where: { id },
@@ -77,6 +77,7 @@ export async function PATCH(request: Request) {
         ...(status !== undefined && { status }),
         ...(triageCategory !== undefined && { triageCategory }),
         ...(doctorId !== undefined && { doctorId }),
+        ...(callStatus !== undefined && { callStatus }),
         ...(status === "COMPLETED" && { completedAt: new Date() }),
         ...(status === "IN_PROGRESS" && { startedAt: new Date() }),
       },

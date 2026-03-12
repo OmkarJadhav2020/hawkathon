@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type PatientInfo = {
   id: string;
@@ -40,17 +40,23 @@ export default function DoctorDashboard() {
   const [doctorName, setDoctorName] = useState("Dr. Physician");
   const searchRef = useRef<NodeJS.Timeout | null>(null);
 
-  const doctorId = typeof window !== "undefined"
-    ? (localStorage.getItem("doctorId") ?? localStorage.getItem("userId") ?? "cmmnpw2cd0002f770mhrgdj2k")
-    : "cmmnpw2cd0002f770mhrgdj2k";
-
+  // Route Protection & User Data
   useEffect(() => {
-    // Read doctor name from localStorage
     if (typeof window !== "undefined") {
-      const name = localStorage.getItem("userName");
-      if (name) setDoctorName(name);
+      const id = localStorage.getItem("doctorId") ?? localStorage.getItem("userId");
+      const role = localStorage.getItem("userRole");
+      if (!id || role !== "DOCTOR") {
+        router.push("/");
+      } else {
+        const name = localStorage.getItem("userName");
+        if (name) setDoctorName(name);
+      }
     }
-  }, []);
+  }, [router]);
+
+  const doctorId = typeof window !== "undefined"
+    ? (localStorage.getItem("doctorId") ?? localStorage.getItem("userId"))
+    : null;
 
   const fetchConsultations = async () => {
     try {
@@ -70,7 +76,15 @@ export default function DoctorDashboard() {
     }
   };
 
-  useEffect(() => { fetchConsultations(); }, []);
+  useEffect(() => {
+    if (doctorId) {
+      fetchConsultations();
+      // Auto-refresh every 10 seconds
+      const interval = setInterval(() => fetchConsultations(), 10000);
+      return () => clearInterval(interval);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doctorId]);
 
   // Patient search with debounce
   useEffect(() => {
@@ -154,6 +168,21 @@ export default function DoctorDashboard() {
     router.push("/");
   };
 
+  const handleStartVideoCall = async () => {
+    if (!activeConsult) { showToast("Select a patient first."); return; }
+    try {
+      // Signal patient that call is incoming
+      await fetch(`/api/consultations?id=${activeConsult.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callStatus: "RINGING", status: "IN_PROGRESS", doctorId }),
+      });
+      router.push(`/dashboard/patient/consultation?id=${activeConsult.id}`);
+    } catch {
+      showToast("Could not start call. Try again.");
+    }
+  };
+
   const handlePrint = () => {
     if (!activeConsult) return;
     window.print();
@@ -170,7 +199,7 @@ export default function DoctorDashboard() {
     <div className="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-2">
           <span className="material-symbols-outlined text-green-400">check_circle</span>
           <span className="font-medium text-sm">{toast}</span>
         </div>
@@ -206,7 +235,7 @@ export default function DoctorDashboard() {
         </div>
       </header>
 
-      {loading ? (
+      {(!doctorId || loading) ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
         </div>
@@ -549,7 +578,7 @@ export default function DoctorDashboard() {
               <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-3">Quick Actions</h4>
               <div className="space-y-2">
                 {[
-                  { icon: "video_call", label: "Start Video Call", action: () => showToast("Video call feature requires WebRTC setup. Coming soon.") },
+                  { icon: "video_call", label: "Start Video Call", action: handleStartVideoCall },
                   { icon: "medication", label: "Write Prescription", action: () => { if (activeConsult) setActiveTab("prescription"); else showToast("Select a patient first."); } },
                   { icon: "phone", label: "Call Patient", action: () => activeConsult ? (window.location.href = `tel:${activeConsult.patient.phone}`) : showToast("Select a patient first.") },
                 ].map((item) => (

@@ -19,6 +19,13 @@ enum Role {
   ADMIN
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  DISPENSED
+  CANCELLED
+}
+
 enum ConsultationStatus {
   PENDING
   IN_PROGRESS
@@ -65,6 +72,7 @@ model User {
   ashaWorker     AshaWorkerProfile?
   doctorProfile  DoctorProfile?
   pharmacy       PharmacyProfile?
+  medicineOrders MedicineOrder[]
 
   @@map("users")
 }
@@ -128,6 +136,7 @@ model Consultation {
   scheduledAt    DateTime?
   startedAt      DateTime?
   completedAt    DateTime?
+  callStatus     String             @default("NONE") // NONE | RINGING | ONGOING | ENDED
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -182,6 +191,7 @@ model PharmacyStock {
   expiryDate  DateTime?
   inStock     Boolean @default(true)
   updatedAt   DateTime @updatedAt
+  orders      MedicineOrder[]
 
   @@map("pharmacy_stocks")
 }
@@ -199,4 +209,23 @@ model OfflineSyncQueue {
   errorMessage String?
 
   @@map("offline_sync_queue")
+}
+
+model MedicineOrder {
+  id             String      @id @default(cuid())
+  patientId      String
+  patient        User        @relation(fields: [patientId], references: [id])
+  pharmacyStockId String
+  pharmacyStock  PharmacyStock @relation(fields: [pharmacyStockId], references: [id])
+  prescriptionId String?
+  consultationId String?
+  medicineName   String
+  quantity       Int         @default(1)
+  status         OrderStatus @default(PENDING)
+  notes          String?
+  deliveryAddress String?    // << ADDED Phase 8
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("medicine_orders")
 }

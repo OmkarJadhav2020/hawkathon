@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type HealthRecord = { id: string; type: string; title: string; date: string; fileUrl: string | null };
@@ -14,33 +15,45 @@ type DashboardData = {
   pastAppointments: { id: string; doctorName: string; reason: string; date: string; type: string; status: string }[];
 };
 
-// ─── Active Consultation Hook ─────────────────────────────────────────────────
+// ─── Consultation Polling Hook ────────────────────────────────────────────────
+type ActiveConsult = {
+  id: string;
+  doctorName: string;
+  status: string;
+  callStatus: string;
+};
+
 function useActiveConsultation(userId: string) {
-  const [activeConsult, setActiveConsult] = useState<Appointment | null>(null);
+  const [activeConsult, setActiveConsult] = useState<ActiveConsult | null>(null);
+  const [incomingCall, setIncomingCall] = useState<ActiveConsult | null>(null);
 
   useEffect(() => {
     if (!userId) return;
 
     const checkActive = async () => {
       try {
-        const res = await fetch(`/api/appointments?userId=${userId}`);
+        const res = await fetch(`/api/consultations?patientId=${userId}`);
         if (!res.ok) return;
         const data = await res.json();
         
-        // Find any appointment that is exactly IN_PROGRESS right now
-        const inProgress = (data.upcoming || []).find((a: any) => a.status === "IN_PROGRESS");
+        // Find in-progress or ringing consultation
+        const inProgress = data.find((c: ActiveConsult) => c.status === "IN_PROGRESS" || c.status === "PENDING");
         setActiveConsult(inProgress || null);
+
+        // Detect incoming ringing call
+        const ringing = data.find((c: ActiveConsult) => c.callStatus === "RINGING");
+        setIncomingCall(ringing || null);
       } catch {
-        // silently ignore polling errors
+        // silently ignore
       }
     };
 
-    checkActive(); // check immediately
-    const interval = setInterval(checkActive, 10000); // poll every 10s
+    checkActive();
+    const interval = setInterval(checkActive, 5000); // poll every 5s
     return () => clearInterval(interval);
   }, [userId]);
 
-  return activeConsult;
+  return { activeConsult, incomingCall };
 }
 
 
@@ -137,14 +150,27 @@ export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [showVitalModal, setShowVitalModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const router = useRouter();
 
   // In production: get userId from session cookie
-  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
+  // Check authenticaton
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId");
+      const role = localStorage.getItem("userRole");
+      if (!id || role !== "PATIENT") {
+        router.push("/");
+      }
+    }
+  }, [router]);
 
-  const activeConsultCard = useActiveConsultation(userId);
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+
+  const { activeConsult: activeConsultCard, incomingCall } = useActiveConsultation(userId as string);
 
 
   const fetchDashboard = async () => {
+    if (!userId) return;
     try {
       const res = await fetch(`/api/patient/dashboard?userId=${userId}`);
       const json = await res.json();
@@ -156,7 +182,7 @@ export default function PatientDashboard() {
     }
   };
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useEffect(() => { if (userId) fetchDashboard(); }, [userId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -192,8 +218,60 @@ export default function PatientDashboard() {
   ];
   const todayTip = tips[new Date().getDay() % tips.length];
 
+  if (!userId) return (
+    <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+    </div>
+  );
+
+  // ── Decline incoming call (patch callStatus to ENDED) ─────────────────────
+  const declineCall = async () => {
+    if (!incomingCall) return;
+    try {
+      await fetch(`/api/consultations?id=${incomingCall.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callStatus: "ENDED" }),
+      });
+    } catch { /* ignore */ }
+  };
+
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+
+      {/* ── INCOMING VIDEO CALL MODAL ─────────────────────────────────────── */}
+      {incomingCall && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-700 w-full max-w-sm p-8 flex flex-col items-center gap-4 text-center">
+            {/* Pulsing avatar */}
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
+              <div className="relative w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center ring-4 ring-primary/40">
+                <span className="material-symbols-outlined text-5xl text-primary">video_call</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Incoming Video Call</p>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">{incomingCall.doctorName ?? "Your Doctor"}</h2>
+              <p className="text-slate-500 text-sm mt-1">GraamSehat Consultation</p>
+            </div>
+            <div className="flex gap-4 w-full mt-2">
+              <button
+                onClick={declineCall}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors"
+              >
+                <span className="material-symbols-outlined">call_end</span> Decline
+              </button>
+              <button
+                onClick={() => router.push(`/dashboard/patient/consultation?id=${incomingCall.id}`)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold transition-colors"
+              >
+                <span className="material-symbols-outlined">call</span> Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-2xl max-w-sm text-center animate-in fade-in slide-in-from-top-2">
@@ -204,7 +282,7 @@ export default function PatientDashboard() {
       {/* Add Vital Modal */}
       {showVitalModal && (
         <AddVitalModal
-          userId={userId}
+          userId={userId as string}
           onClose={() => setShowVitalModal(false)}
           onSaved={() => { fetchDashboard(); showToast("Vital reading saved! ✅"); }}
         />
@@ -268,7 +346,7 @@ export default function PatientDashboard() {
               </div>
               <div>
                 <h3 className="text-xl font-bold tracking-tight">Doctor is Ready!</h3>
-                <p className="text-green-100 text-sm">{activeConsultCard.doctorName} has started your {activeConsultCard.specialty} consultation.</p>
+                <p className="text-green-100 text-sm">{activeConsultCard.doctorName ? `Dr. ${activeConsultCard.doctorName}` : "Your doctor"} has started your consultation.</p>
               </div>
             </div>
             

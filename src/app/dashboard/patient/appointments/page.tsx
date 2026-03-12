@@ -1,51 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
+
+type Consultation = {
+  id: string;
+  status: string;
+  scheduledAt: string;
+  connectionMode: string | null;
+  doctor: {
+    id: string;
+    name: string;
+    doctorProfile: { specialty: string | null } | null;
+  };
+};
 
 type Doctor = {
   id: string;
   name: string;
-  doctorProfile: {
-    specialty: string | null;
-  } | null;
+  doctorProfile: { specialty: string | null } | null;
 };
 
-type Consultation = {
-  id: string;
-  scheduledAt: Date;
-  status: string;
-  connectionMode: string;
-  notes: string | null;
-  doctor: Doctor;
-};
-
-// ─── Active Consultation Hook ─────────────────────────────────────────────────
-function useActiveConsultation(userId: string) {
-  const [activeConsult, setActiveConsult] = useState<any>(null);
-
+function useActiveConsultation(userId: string | null) {
+  const [activeConsult, setActiveConsult] = useState<Consultation | null>(null);
   useEffect(() => {
     if (!userId) return;
-
-    const checkActive = async () => {
+    const poll = async () => {
       try {
         const res = await fetch(`/api/appointments?userId=${userId}`);
         if (!res.ok) return;
         const data = await res.json();
-        
-        const inProgress = (data.upcoming || []).find((a: any) => a.status === "IN_PROGRESS");
-        setActiveConsult(inProgress || null);
-      } catch {
-        // silently ignore polling errors
-      }
+        const active = data.upcoming?.find((c: Consultation) => c.status === "IN_PROGRESS") ?? null;
+        setActiveConsult(active);
+      } catch { /* ignore */ }
     };
-
-    checkActive(); // check immediately
-    const interval = setInterval(checkActive, 10000); // poll every 10s
+    poll();
+    const interval = setInterval(poll, 10000);
     return () => clearInterval(interval);
   }, [userId]);
-
   return activeConsult;
 }
 
@@ -57,12 +51,27 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
-  // In production: get userId from session cookie
-  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
+  // Modals
+  const [cancelId, setCancelId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
 
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId");
+      const r = localStorage.getItem("userRole");
+      if (!id || r !== "PATIENT") router.push("/");
+    }
+  }, [router]);
+
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
   const activeConsultCard = useActiveConsultation(userId);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
+    if (!userId) return;
     try {
       const res = await fetch(`/api/appointments?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch");
@@ -75,13 +84,14 @@ export default function AppointmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAppointments();
   }, [userId]);
 
+  useEffect(() => {
+    if (userId) fetchAppointments();
+  }, [userId, fetchAppointments]);
+
   const handleBook = async (doctorId: string) => {
+    if (!userId) return;
     try {
       const res = await fetch("/api/appointments", {
         method: "POST",
@@ -89,34 +99,131 @@ export default function AppointmentsPage() {
         body: JSON.stringify({ patientId: userId, doctorId }),
       });
       if (!res.ok) throw new Error("Booking failed");
-
-      setToast("Appointment booked successfully!");
-      setTimeout(() => setToast(null), 3000);
+      showToast("✅ Appointment booked successfully!");
       setTab("upcoming");
       fetchAppointments();
     } catch (error) {
       console.error(error);
-      alert("Failed to book appointment.");
+      showToast("❌ Failed to book appointment.");
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelId) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: cancelId, action: "cancel" }),
+      });
+      if (!res.ok) throw new Error("Cancel failed");
+      showToast("✅ Appointment cancelled successfully.");
+      setCancelId(null);
+      fetchAppointments();
+    } catch {
+      showToast("❌ Failed to cancel appointment. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleId || !rescheduleDate) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: rescheduleId, action: "reschedule", scheduledAt: new Date(rescheduleDate).toISOString() }),
+      });
+      if (!res.ok) throw new Error("Reschedule failed");
+      showToast("✅ Appointment rescheduled successfully!");
+      setRescheduleId(null);
+      setRescheduleDate("");
+      fetchAppointments();
+    } catch {
+      showToast("❌ Failed to reschedule. Please try again.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   };
+
+  if (!userId) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>;
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 animate-fade-in flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-400">check_circle</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] animate-fade-in flex items-center gap-2">
           <span className="font-medium text-sm">{toast}</span>
         </div>
       )}
 
+      {/* Cancel Confirm Modal */}
+      {cancelId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-red-600">cancel</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Cancel Appointment?</h2>
+            <p className="text-slate-500 text-sm mb-6">This action cannot be undone. The appointment will be permanently cancelled.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelId(null)}
+                className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Keep Appointment
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={actionLoading}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+              >
+                {actionLoading ? "Cancelling..." : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Reschedule Appointment</h2>
+              <button onClick={() => setRescheduleId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <span className="material-symbols-outlined text-slate-500">close</span>
+              </button>
+            </div>
+            <p className="text-slate-500 text-sm mb-4">Select a new date and time for your appointment.</p>
+            <input
+              type="datetime-local"
+              value={rescheduleDate}
+              onChange={(e) => setRescheduleDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+            />
+            <button
+              onClick={handleReschedule}
+              disabled={!rescheduleDate || actionLoading}
+              className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+            >
+              {actionLoading ? "Rescheduling..." : "Confirm New Time"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
@@ -126,7 +233,7 @@ export default function AppointmentsPage() {
             <span className="text-xl font-bold tracking-tight">GraamSehat</span>
           </div>
           <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
-            {userId === "demo" ? "DEMO" : "PT"}
+            PT
           </div>
         </div>
       </header>
@@ -145,23 +252,22 @@ export default function AppointmentsPage() {
           </button>
         </div>
 
-        {/* Incoming Call / Active Consultation Banner */}
+        {/* Incoming Call Banner */}
         {activeConsultCard && (
-          <div className="mb-6 bg-gradient-to-r from-green-600 to-green-500 rounded-2xl p-6 shadow-xl text-white flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 fade-in duration-500">
-            <div className="flex items-center gap-4 w-full sm:w-auto">
+          <div className="mb-6 bg-gradient-to-r from-green-600 to-green-500 rounded-2xl p-6 shadow-xl text-white flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center -rotate-12">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                   <span className="material-symbols-outlined text-4xl text-white">ring_volume</span>
                 </div>
                 <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full animate-ping" />
                 <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-green-500 rounded-full" />
               </div>
               <div>
-                <h3 className="text-xl font-bold tracking-tight">Doctor is Ready!</h3>
-                <p className="text-green-100 text-sm">{activeConsultCard.doctor?.name} is waiting for you in the consultation room.</p>
+                <h3 className="text-xl font-bold">Doctor is Ready!</h3>
+                <p className="text-green-100 text-sm">{activeConsultCard.doctor?.name} is waiting for you.</p>
               </div>
             </div>
-            
             <Link
               href={`/dashboard/patient/consultation?id=${activeConsultCard.id}`}
               className="w-full sm:w-auto bg-white text-green-700 font-black px-8 py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
@@ -185,9 +291,7 @@ export default function AppointmentsPage() {
         </div>
 
         {loading ? (
-          <div className="py-20 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <div className="py-20 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
         ) : (
           <>
             {/* Upcoming */}
@@ -195,8 +299,7 @@ export default function AppointmentsPage() {
               <div className="space-y-4">
                 {upcoming.filter((a) => a.status !== "COMPLETED" && (!activeConsultCard || a.id !== activeConsultCard.id)).length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>
+                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">event_busy</span>
                     <p className="text-slate-500">No upcoming appointments</p>
                     <button onClick={() => setTab("book")} className="mt-4 text-primary font-bold text-sm hover:underline">Book one now</button>
                   </div>
@@ -220,28 +323,32 @@ export default function AppointmentsPage() {
                                 <span className="material-symbols-outlined text-sm">monitor_heart</span> {apt.connectionMode} Consultation
                               </p>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase ${apt.status === "CONFIRMED" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-amber-100 text-amber-700"}`}>
-                                {apt.status}
-                              </span>
-                            </div>
+                            <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase ${apt.status === "CONFIRMED" || apt.status === "PENDING" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-amber-100 text-amber-700"}`}>
+                              {apt.status}
+                            </span>
                           </div>
-                          <div className="flex gap-3 mt-4">
+                          <div className="flex gap-3 mt-4 flex-wrap">
                             {apt.connectionMode === "VIDEO" && apt.status !== "COMPLETED" && (
                               <Link href={`/dashboard/patient/consultation?id=${apt.id}`} className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg text-sm hover:opacity-90 transition-all">
                                 <span className="material-symbols-outlined text-sm">videocam</span> Join Call
                               </Link>
                             )}
-                            <button onClick={() => showToast("Rescheduling flow will open in a modal.")} className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                            <button
+                              onClick={() => { setRescheduleId(apt.id); setRescheduleDate(""); }}
+                              className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                            >
                               <span className="material-symbols-outlined text-sm">edit_calendar</span> Reschedule
                             </button>
-                            <button onClick={() => showToast("Cancellation requires 24hr notice. Contacting clinic...")} className="flex items-center gap-2 px-4 py-2 border border-red-100 dark:border-red-900/30 text-red-500 font-bold rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
-                              Cancel
+                            <button
+                              onClick={() => setCancelId(apt.id)}
+                              className="flex items-center gap-2 px-4 py-2 border border-red-100 dark:border-red-900/30 text-red-500 font-bold rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
+                            >
+                              <span className="material-symbols-outlined text-sm">cancel</span> Cancel
                             </button>
                           </div>
                         </div>
                       </div>
-                    )
+                    );
                   })
                 )}
               </div>
@@ -252,7 +359,7 @@ export default function AppointmentsPage() {
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 {past.length === 0 ? (
                   <div className="text-center py-12">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">history</span>
+                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">history</span>
                     <p className="text-slate-500">No past consultations found.</p>
                   </div>
                 ) : (
@@ -266,15 +373,13 @@ export default function AppointmentsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {past.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{format(new Date(p.scheduledAt), "dd MMM yyyy")}</td>
-                          <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-slate-200">{p.doctor.name}</td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{p.connectionMode}</span>
-                          </td>
+                      {past.map((apt) => (
+                        <tr key={apt.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-slate-500">{format(new Date(apt.scheduledAt), "dd MMM yyyy")}</td>
+                          <td className="px-6 py-4 font-bold text-sm text-slate-900 dark:text-white">{apt.doctor.name}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500">{apt.connectionMode}</td>
                           <td className="px-6 py-4 text-right">
-                            <Link href={`/dashboard/prescription?consultId=${p.id}`} className="text-xs font-bold text-primary border border-primary/20 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-all">View Rx</Link>
+                            <Link href={`/dashboard/patient/records`} className="text-primary text-xs font-bold hover:underline">View Record</Link>
                           </td>
                         </tr>
                       ))}
@@ -286,41 +391,31 @@ export default function AppointmentsPage() {
 
             {/* Book */}
             {tab === "book" && (
-              <div className="space-y-6">
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">info</span>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">Select an available doctor to join their live teleconsultation queue.</p>
-                </div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Available Doctors Now</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {doctors.length === 0 ? (
-                    <p className="text-slate-500 text-sm">No doctors currently online in the system.</p>
-                  ) : (
-                    doctors.map((doc) => {
-                      const isAvailable = true; // In full prod, we'd check their online/schedule status
-                      return (
-                        <div key={doc.id} className={`bg-white dark:bg-slate-900 rounded-xl border p-5 shadow-sm flex items-center gap-4 ${isAvailable ? "border-slate-200 dark:border-slate-800 hover:border-primary/30 transition-colors" : "border-slate-100 dark:border-slate-800 opacity-60"}`}>
-                          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
-                            {doc.name.charAt(0)}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-bold text-slate-900 dark:text-white">{doc.name}</p>
-                            <p className="text-xs text-slate-500">{doc.doctorProfile?.specialty || "General Physician"}</p>
-                            <p className={`text-xs font-bold mt-1 ${isAvailable ? "text-green-600" : "text-slate-400"}`}>
-                              {isAvailable ? `⏱ Wait: ~5 min` : "Currently unavailable"}
-                            </p>
-                          </div>
-                          {isAvailable ? (
-                            <button onClick={() => handleBook(doc.id)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-all">
-                              Book Visit
-                            </button>
-                          ) : (
-                            <button disabled className="bg-slate-100 dark:bg-slate-700 text-slate-400 text-xs font-bold px-4 py-2 rounded-lg cursor-not-allowed">Busy</button>
-                          )}
-                        </div>
-                      )
-                    }))}
-                </div>
+              <div className="grid gap-4">
+                {doctors.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <span className="material-symbols-outlined text-4xl mb-2 block">person_off</span>
+                    <p>No doctors available right now.</p>
+                  </div>
+                ) : (
+                  doctors.map((doc) => (
+                    <div key={doc.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-6">
+                      <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary text-2xl font-black">
+                        {doc.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-slate-900 dark:text-white">{doc.name}</p>
+                        <p className="text-slate-500 text-sm">{doc.doctorProfile?.specialty || "General Physician"}</p>
+                      </div>
+                      <button
+                        onClick={() => handleBook(doc.id)}
+                        className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:opacity-90 transition-all"
+                      >
+                        Book
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </>

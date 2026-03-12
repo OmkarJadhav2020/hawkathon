@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import QRCode from "qrcode";
@@ -60,10 +61,24 @@ export default function HealthRecordsPage() {
   const [search, setSearch] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") ?? "cmmnpw2c70000f7707prdd937" : "cmmnpw2c70000f7707prdd937";
+  const router = useRouter();
+
+  // Route Protection
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId");
+      const r = localStorage.getItem("userRole");
+      if (!id || r !== "PATIENT") {
+        router.push("/");
+      }
+    }
+  }, [router]);
+
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
 
   useEffect(() => {
     const fetchRecords = async () => {
+      if (!userId) return;
       try {
         const res = await fetch(`/api/records?userId=${userId}`);
         if (!res.ok) throw new Error("Failed to fetch records");
@@ -99,9 +114,9 @@ export default function HealthRecordsPage() {
     c.symptoms.some((s) => s.toLowerCase().includes(search.toLowerCase()))
   );
 
-  if (loading) {
+  if (!userId || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     );

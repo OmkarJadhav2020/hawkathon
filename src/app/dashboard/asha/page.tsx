@@ -51,10 +51,20 @@ export default function AshaWorkerDashboard() {
   });
   const [regError, setRegError] = useState("");
 
-  const ashaId = typeof window !== "undefined"
-    ? localStorage.getItem("userId") ?? localStorage.getItem("ashaId") ?? ""
-    : "";
   const router = useRouter();
+
+  // Route Protection & Auth
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("userId");
+      const r = localStorage.getItem("userRole");
+      if (!id || r !== "ASHA") {
+        router.push("/");
+      }
+    }
+  }, [router]);
+
+  const ashaId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
 
   const handleLogout = () => {
     localStorage.clear();
@@ -144,11 +154,36 @@ export default function AshaWorkerDashboard() {
     }
   };
 
+  const handleProxyBook = async (patientId: string, patientName: string) => {
+    try {
+      showToast(`Booking proxy appointment for ${patientName}...`);
+      // Use the known doctor ID for test environment
+      const doctorId = "cmmnpw2cd0002f770mhrgdj2k";
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, doctorId }),
+      });
+      if (!res.ok) throw new Error("Booking failed");
+      showToast(`✅ Successfully booked teleconsultation for ${patientName}!`);
+    } catch {
+      showToast("❌ Failed to book appointment. Please try again.");
+    }
+  };
+
+  if (!ashaId || loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background-light dark:bg-background-dark">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-2xl z-50 flex items-center gap-2 max-w-sm text-center text-sm font-medium">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-2xl z-[100] flex items-center gap-2 max-w-sm text-center text-sm font-medium">
           {toast}
         </div>
       )}
@@ -458,7 +493,7 @@ export default function AshaWorkerDashboard() {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <button
-                                    onClick={() => showToast(`Booking proxy appointment for ${p.name}...`)}
+                                    onClick={() => handleProxyBook(p.id, p.name)}
                                     className="px-4 py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-xs font-bold transition-all"
                                   >
                                     Proxy Book
@@ -542,7 +577,7 @@ export default function AshaWorkerDashboard() {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => showToast(`Booking proxy appointment for ${p.name}...`)} className="mt-4 w-full py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-sm font-bold transition-all">
+                      <button onClick={() => handleProxyBook(p.id, p.name)} className="mt-4 w-full py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-sm font-bold transition-all">
                         Proxy Book Appointment
                       </button>
                     </div>
