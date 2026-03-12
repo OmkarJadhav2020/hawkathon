@@ -214,8 +214,13 @@ export default function DoctorDashboard() {
               <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GraamSehat</h2>
             </div>
             <nav className="hidden md:flex items-center gap-6">
-              <a className="text-sm font-semibold text-primary border-b-2 border-primary pb-1" href="#">Dashboard</a>
-              <Link className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="/dashboard/patient/records">Patient Records</Link>
+              <span className="text-sm font-semibold text-primary border-b-2 border-primary pb-1 cursor-default">Dashboard</span>
+              <button 
+                onClick={() => showToast("Select a patient from the queue to view their records.")}
+                className="text-sm font-medium text-slate-500 hover:text-primary transition-colors cursor-pointer"
+              >
+                Patient Records
+              </button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
