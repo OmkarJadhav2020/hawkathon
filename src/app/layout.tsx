@@ -14,6 +14,10 @@ export const metadata: Metadata = {
     "Bridging healthcare gaps for 173 villages around Nabha Civil Hospital. Low-bandwidth, offline-first telemedicine access.",
   keywords: ["telemedicine", "rural health", "India", "ASHA", "offline healthcare"],
   authors: [{ name: "GraamSehat Team" }],
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/globe.svg",
+  },
 };
 
 export const viewport: Viewport = {

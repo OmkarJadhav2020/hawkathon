@@ -87,7 +87,7 @@ export default function PharmacyDashboard() {
     }
   }, [router]);
 
-  const pharmacyId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+  const pharmacyId = typeof window !== "undefined" ? localStorage.getItem("pharmacyId") : null;
 
   const fetchData = useCallback(async () => {
     if (!pharmacyId) return;

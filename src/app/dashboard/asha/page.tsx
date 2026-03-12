@@ -42,6 +42,7 @@ export default function AshaWorkerDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   // Registration modal state
   const [showRegModal, setShowRegModal] = useState(false);
@@ -80,15 +81,55 @@ export default function AshaWorkerDashboard() {
       const data = await res.json();
       setProfile(data.profile);
       setPatients(data.patients ?? []);
-      setSyncQueue(data.syncQueue ?? []);
+      // Load offline sync queue from localStorage, combine with server syncQueue
+      const localSyncQueueStr = localStorage.getItem("asha_sync_queue");
+      const localSyncQueue = localSyncQueueStr ? JSON.parse(localSyncQueueStr) : [];
+      setSyncQueue([...localSyncQueue.map((item: any) => ({
+        id: item._localId,
+        type: "OFFLINE_REGISTRATION",
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString()
+      })), ...(data.syncQueue ?? [])]);
+
+      // Cache the patients for offline use
+      localStorage.setItem("asha_patients_cache", JSON.stringify(data.patients ?? []));
+      localStorage.setItem("asha_profile_cache", JSON.stringify(data.profile));
     } catch {
-      console.error("Failed to fetch ASHA data");
+      console.error("Failed to fetch ASHA data, attempting to load from cache...");
+      const cachedPatients = localStorage.getItem("asha_patients_cache");
+      const cachedProfile = localStorage.getItem("asha_profile_cache");
+      if (cachedPatients) setPatients(JSON.parse(cachedPatients));
+      if (cachedProfile) setProfile(JSON.parse(cachedProfile));
+      
+      const localSyncQueueStr = localStorage.getItem("asha_sync_queue");
+      const localSyncQueue = localSyncQueueStr ? JSON.parse(localSyncQueueStr) : [];
+      setSyncQueue(localSyncQueue.map((item: any) => ({
+        id: item._localId,
+        type: "OFFLINE_REGISTRATION",
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString()
+      })));
     } finally {
       setLoading(false);
     }
   }, [ashaId]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { 
+    fetchData(); 
+    
+    // Setup online/offline listeners
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    setIsOnline(navigator.onLine);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [fetchData]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -103,6 +144,42 @@ export default function AshaWorkerDashboard() {
 
     setRegLoading(true);
     try {
+      const newRecord = {
+        patientName: regForm.name.trim(),
+        phone: regForm.phone.trim() || undefined,
+        gender: regForm.gender || undefined,
+        bloodGroup: regForm.bloodGroup || undefined,
+        dateOfBirth: regForm.dateOfBirth || undefined,
+      };
+
+      if (!isOnline) {
+        // Queue offline
+        const localSyncQueueStr = localStorage.getItem("asha_sync_queue");
+        const localSyncQueue = localSyncQueueStr ? JSON.parse(localSyncQueueStr) : [];
+        const _localId = "loc_" + Date.now() + Math.random().toString(36).slice(2, 6);
+        localSyncQueue.push({ ...newRecord, _localId, village: regForm.village || profile?.villages[0] || "" });
+        localStorage.setItem("asha_sync_queue", JSON.stringify(localSyncQueue));
+        
+        // Optimistically add to UI patients list
+        setPatients(prev => [{
+          id: _localId,
+          name: newRecord.patientName,
+          village: regForm.village || profile?.villages[0] || "",
+          bloodGroup: newRecord.bloodGroup || "Unknown",
+          allergies: [],
+          phone: newRecord.phone || null,
+          gender: newRecord.gender || null,
+          consultationsAsPatient: []
+        }, ...prev]);
+        
+        setShowRegModal(false);
+        setRegForm({ name: "", phone: "", village: "", gender: "", bloodGroup: "", dateOfBirth: "" });
+        showToast(`📴 Saved offline. Will sync when internet is restored.`);
+        fetchData(); // to update syncQueue length UI
+        return;
+      }
+
+      // Online logic
       const res = await fetch("/api/sync/asha-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -111,13 +188,7 @@ export default function AshaWorkerDashboard() {
           campId: "DIRECT",
           campDate: new Date().toISOString(),
           village: regForm.village || profile?.villages[0] || "",
-          records: [{
-            patientName: regForm.name.trim(),
-            phone: regForm.phone.trim() || undefined,
-            gender: regForm.gender || undefined,
-            bloodGroup: regForm.bloodGroup || undefined,
-            dateOfBirth: regForm.dateOfBirth || undefined,
-          }],
+          records: [newRecord],
         }),
       });
       const data = await res.json();
@@ -136,16 +207,49 @@ export default function AshaWorkerDashboard() {
 
   // ─── Sync Now ────────────────────────────────────────────────────
   const handleSync = async () => {
-    if (!ashaId) return;
+    if (!ashaId || !isOnline) {
+      showToast("Cannot sync while offline.");
+      return;
+    }
     setSyncing(true);
     try {
+      // 1. Send all local queued registrations first
+      let localSuccess = true;
+      const localSyncQueueStr = localStorage.getItem("asha_sync_queue");
+      const localSyncQueue = localSyncQueueStr ? JSON.parse(localSyncQueueStr) : [];
+      if (localSyncQueue.length > 0) {
+        showToast("Syncing offline records...");
+        const res = await fetch("/api/sync/asha-batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ashaWorkerId: ashaId,
+            campId: "OFFLINE_SYNC",
+            campDate: new Date().toISOString(),
+            // Remove the internal _localId and village from the standard records block
+            records: localSyncQueue.map((item: any) => {
+              const { _localId, village, ...rest } = item;
+              return { ...rest, village }; // Grouping allowed fields
+            }),
+          }),
+        });
+        const batchData = await res.json();
+        if (batchData.success) {
+          localStorage.removeItem("asha_sync_queue");
+        } else {
+          localSuccess = false;
+        }
+      }
+
+      // 2. Trigger normal backend sync if needed
       const res = await fetch(`/api/asha/sync?ashaId=${ashaId}`, { method: "POST" });
       const data = await res.json();
-      if (data.success) {
-        showToast(`☁️ ${data.message}`);
+      
+      if (data.success && localSuccess) {
+        showToast(`☁️ All records synced successfully!`);
         await fetchData();
       } else {
-        showToast("Sync failed. Check your connection.");
+        showToast("Sync partially failed. Check logs.");
       }
     } catch {
       showToast("Network error during sync.");
@@ -195,7 +299,9 @@ export default function AshaWorkerDashboard() {
             <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Register New Patient</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Data saved directly to GraamSehat DB</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isOnline ? "Data saved directly to GraamSehat DB" : "Offline mode: Data will be queued locally"}
+                </p>
               </div>
               <button onClick={() => { setShowRegModal(false); setRegError(""); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
                 <span className="material-symbols-outlined text-slate-500">close</span>
@@ -335,9 +441,9 @@ export default function AshaWorkerDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${profile?.isOnline ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>
-            <span className="material-symbols-outlined text-sm">{profile?.isOnline ? "cloud_done" : "cloud_off"}</span>
-            <span className="text-xs font-bold uppercase tracking-wider">{profile?.isOnline ? "Online" : "Offline"}</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${isOnline ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>
+            <span className="material-symbols-outlined text-sm">{isOnline ? "wifi" : "wifi_off"}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{isOnline ? "Online" : "Offline"}</span>
           </div>
           <div className="size-10 rounded-full border-2 border-asha bg-asha/10 flex items-center justify-center text-asha font-bold">
             {profile?.name?.slice(0, 2).toUpperCase() ?? "AS"}
