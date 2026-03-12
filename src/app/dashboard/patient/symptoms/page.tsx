@@ -69,7 +69,7 @@ export default function SymptomChecker() {
 
         aiResponse = {
           role: "ai",
-          content: data.message || "Thank you. Is there anything else you'd like to share about your condition?",
+          content: data.message || (data.triage ? "I have assessed your symptoms. Please review the recommended actions on the right." : "Thank you. Is there anything else you'd like to share about your condition?"),
           pills: data.pills || (data.triage ? ["Book Teleconsult", "Find Pharmacy", "Home Care Tips"] : undefined),
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };

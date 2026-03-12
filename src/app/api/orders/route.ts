@@ -43,21 +43,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/orders — Patient places a medicine order
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { patientId, pharmacyStockId, quantity = 1, prescriptionId, consultationId, notes, deliveryAddress } = body;
+  // POST /api/orders — Patient places a medicine order
+  export async function POST(request: NextRequest) {
+    try {
+      const body = await request.json();
+      const { patientId, pharmacyStockId, medicineName, quantity = 1, prescriptionId, consultationId, notes, deliveryAddress } = body;
+  
+      if (!patientId || (!pharmacyStockId && !medicineName)) {
+        return NextResponse.json({ error: "patientId and either pharmacyStockId or medicineName are required" }, { status: 400 });
+      }
+  
+      let stock;
+      if (pharmacyStockId) {
+        stock = await prisma.pharmacyStock.findUnique({ where: { id: pharmacyStockId } });
+      } else if (medicineName) {
+        // Find FIRST available stock for the medicine name
+        stock = await prisma.pharmacyStock.findFirst({
+          where: {
+            medicineName: { contains: medicineName, mode: "insensitive" },
+            inStock: true,
+            quantity: { gte: quantity },
+          },
+        });
+      }
 
-    if (!patientId || !pharmacyStockId) {
-      return NextResponse.json({ error: "patientId and pharmacyStockId are required" }, { status: 400 });
-    }
-
-    const stock = await prisma.pharmacyStock.findUnique({ where: { id: pharmacyStockId } });
-    if (!stock) return NextResponse.json({ error: "Medicine not found" }, { status: 404 });
-    if (!stock.inStock || stock.quantity < quantity) {
-      return NextResponse.json({ error: "Insufficient stock" }, { status: 400 });
-    }
+      if (!stock) return NextResponse.json({ error: "Medicine not found or out of stock" }, { status: 404 });
+      if (!stock.inStock || stock.quantity < quantity) {
+        return NextResponse.json({ error: "Insufficient stock" }, { status: 400 });
+      }
 
     const order = await prisma.medicineOrder.create({
       data: {

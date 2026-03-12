@@ -106,8 +106,8 @@ function ruleBasedTriage(symptoms: string[]) {
 
   if (isTeleconsult) {
     return {
-      message: "Based on what you've described, a doctor should check this. How long have you had these symptoms?",
-      pills: ["Since today", "2-3 days", "More than a week"],
+      message: "I have assessed your symptoms. A doctor consultation is recommended within the next 24 hours.",
+      pills: ["Book Teleconsult", "Find Pharmacy"],
       triage: {
         category: "TELECONSULT",
         condition: "Possible Viral Infection",

@@ -398,17 +398,12 @@ function ConsultationRoomContent() {
     setOrderingLive((prev) => [...prev, med.name]);
     
     try {
-      // Find a stock match via our existing endpoint or just use a generic flow.
-      // To keep the demo fast, we hit our DB directly, but we need the stock ID.
-      // Instead, we'll let the user know they can checkout via the Pharmacy tab, 
-      // or we can stub an order if we know a generic ID.
-      
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: pId,
-          pharmacyStockId: testPharmacyStockId, // We use a hardcoded stock from seed for the instant demo (Paracetamol)
+          medicineName: med.name, // Use name matching for live orders
           quantity: med.maxQty,
           notes: `Sent via live video call for ${med.name}`,
           consultationId: consultId,
@@ -416,12 +411,16 @@ function ConsultationRoomContent() {
         })
       });
       
-      if (!res.ok) throw new Error("Order failed");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Order failed");
+      }
       
       setOrderedLive((prev) => [...prev, med.name]);
       addSystemMessage(`Successfully ordered ${med.name} from pharmacy.`);
-    } catch {
-      addSystemMessage(`Failed to place order for ${med.name}. The pharmacy stock might not be seeded correctly.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed";
+      addSystemMessage(`❌ Order failed: ${msg}`);
     } finally {
       setOrderingLive((prev) => prev.filter(n => n !== med.name));
     }

@@ -189,8 +189,23 @@ export default function PatientDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleReschedule = (id: string) => showToast(`Reschedule flow for appointment ${id} — call your clinic or use the Appointments page.`);
-  const handleCancel = (id: string) => showToast(`Cancellation request for ${id} noted. Feature coming soon — call 108 for urgent cancellations.`);
+  const handleReschedule = (id: string) => {
+    router.push("/dashboard/patient/appointments");
+  };
+  const handleCancel = async (id: string) => {
+    if (!confirm("Are you sure you want to cancel this appointment?")) return;
+    try {
+      await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "cancel" }),
+      });
+      showToast("Appointment cancelled successfully.");
+      fetchDashboard();
+    } catch {
+      showToast("Failed to cancel appointment.");
+    }
+  };
   const handleDownload = (rec: HealthRecord) => {
     if (rec.fileUrl) {
       window.open(rec.fileUrl, "_blank");
