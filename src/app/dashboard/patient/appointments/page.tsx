@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
 
 type Consultation = {
@@ -223,18 +224,29 @@ export default function AppointmentsPage() {
       )}
 
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-              <span className="material-symbols-outlined">arrow_back</span>
-            </Link>
-            <span className="material-symbols-outlined text-primary text-2xl">health_and_safety</span>
-            <span className="text-xl font-bold tracking-tight">GraamSehat</span>
-          </div>
+      <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
+        <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
+          <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
+          <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
+        </Link>
+        <div className="flex flex-1 justify-end gap-3 items-center">
+          <nav className="hidden md:flex gap-6 mr-6">
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient">Home</Link>
+            <a className="text-sm font-semibold text-primary border-b-2 border-primary py-5" href="#">Appointments</a>
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/records">Records</Link>
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/orders">My Orders</Link>
+          </nav>
+          {/* Account Avatar */}
           <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
             {typeof window !== "undefined" ? (localStorage.getItem("userName")?.slice(0, 2).toUpperCase() ?? "PT") : "PT"}
           </div>
+          <button
+            onClick={() => { localStorage.clear(); window.location.href = "/"; }}
+            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+            title="Sign Out"
+          >
+            <span className="material-symbols-outlined text-lg">logout</span>
+          </button>
         </div>
       </header>
 

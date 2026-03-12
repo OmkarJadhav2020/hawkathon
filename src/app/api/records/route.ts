@@ -70,3 +70,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+// POST /api/records — Doctor adds a health record for a patient
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { patientId, type, title, description, doctorName } = body;
+
+    if (!patientId || !title) {
+      return NextResponse.json({ error: "patientId and title are required" }, { status: 400 });
+    }
+
+    // Validate patient exists
+    const patient = await prisma.user.findUnique({ where: { id: patientId }, select: { id: true } });
+    if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+
+    const record = await prisma.healthRecord.create({
+      data: {
+        patientId,
+        type: type ?? "GENERAL",
+        title,
+        description: description ?? null,
+        doctorName: doctorName ?? null,
+        fileUrl: null,
+        syncStatus: "SYNCED",
+      },
+    });
+
+    return NextResponse.json({ success: true, record }, { status: 201 });
+  } catch (error) {
+    console.error("API Error - POST /api/records:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

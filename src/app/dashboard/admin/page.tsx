@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { format, formatDistanceToNow } from "date-fns";
 
 type Stats = {
@@ -42,16 +44,228 @@ type Stats = {
 
 const ACCENT_COLORS = ["bg-primary", "bg-blue-500", "bg-amber-500", "bg-green-500", "bg-purple-500"];
 
+// ─── Add Doctor Modal ──────────────────────────────────────────────────────────
+function AddDoctorModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (msg: string) => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialization, setSpecialization] = useState("General Physician");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const specializations = [
+    "General Physician", "Pediatrician", "Gynecologist", "Cardiologist",
+    "Dermatologist", "Orthopedic", "ENT Specialist", "Ophthalmologist",
+    "Psychiatrist", "Neurologist", "Surgeon", "Dentist",
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) { setError("Name and phone are required."); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "DOCTOR", name: name.trim(), phone: phone.trim(), specialization }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to add doctor."); return; }
+      onSuccess(`✅ Dr. ${name} added successfully! Login phone: ${phone}`);
+      onClose();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary">stethoscope</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add New Doctor</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-slate-500">close</span>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Full Name *</label>
+            <input
+              value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Dr. Ramesh Sharma"
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Phone Number *</label>
+            <input
+              value={phone} onChange={(e) => setPhone(e.target.value)}
+              placeholder="10-digit phone (e.g. 9876543210)"
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Specialization *</label>
+            <select
+              value={specialization} onChange={(e) => setSpecialization(e.target.value)}
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {specializations.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50">
+              {saving ? "Adding..." : "Add Doctor"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Patient Modal ─────────────────────────────────────────────────────────
+function AddPatientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (msg: string) => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [village, setVillage] = useState("");
+  const [gender, setGender] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) { setError("Name and phone are required."); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "PATIENT", name: name.trim(), phone: phone.trim(), village: village.trim(), gender: gender || null, bloodGroup: bloodGroup || null, allergies }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to add patient."); return; }
+      onSuccess(`✅ Patient ${name} registered! Login phone: ${phone}`);
+      onClose();
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-blue-600">person_add</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Register New Patient</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-slate-500">close</span>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Full Name *</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anita Devi" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50" required />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Phone Number *</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit phone" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50" required />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Village</label>
+              <input value={village} onChange={(e) => setVillage(e.target.value)} placeholder="Village name" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Gender</label>
+              <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">Select</option>
+                <option>Male</option><option>Female</option><option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Blood Group</label>
+              <select value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">Unknown</option>
+                {["A+","A-","B+","B-","O+","O-","AB+","AB-"].map(bg => <option key={bg}>{bg}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Allergies</label>
+              <input value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="e.g. Penicillin" className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm outline-none focus:ring-2 focus:ring-primary/50" />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50">
+              {saving ? "Registering..." : "Register Patient"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Admin Dashboard ───────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showAddDoctor, setShowAddDoctor] = useState(false);
+  const [showAddPatient, setShowAddPatient] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const notifsRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  useEffect(() => {
+  const fetchStats = () => {
     fetch("/api/admin/stats")
       .then((r) => r.json())
       .then((data) => { setStats(data); setLoading(false); })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchStats(); }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifsRef.current && !notifsRef.current.contains(e.target as Node)) setShowNotifs(false);
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setShowAccountMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 5000); };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
+  };
 
   const totals = stats?.totals;
   const kpis = [
@@ -74,24 +288,154 @@ export default function AdminDashboard() {
     pct: Math.round(((stats?.triage?.find((t) => t.category === tc.key)?.count ?? 0) / totalTriage) * 100),
   }));
 
+  // Build notifications from recent consultations
+  const notifications = (stats?.recentConsultations ?? []).slice(0, 5).map((c) => ({
+    id: c.id,
+    title: `${c.patient.name} — ${c.status}`,
+    body: `${c.doctor?.name ?? "Unassigned"} • ${c.patient.village ?? "Unknown village"}`,
+    time: format(new Date(c.createdAt), "dd MMM, hh:mm a"),
+    isEmergency: c.status === "PENDING",
+  }));
+
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-2xl max-w-sm text-center">
+          {toast}
+        </div>
+      )}
+
+      {/* Add Doctor Modal */}
+      {showAddDoctor && (
+        <AddDoctorModal
+          onClose={() => setShowAddDoctor(false)}
+          onSuccess={(msg) => { showToast(msg); fetchStats(); }}
+        />
+      )}
+
+      {/* Add Patient Modal */}
+      {showAddPatient && (
+        <AddPatientModal
+          onClose={() => setShowAddPatient(false)}
+          onSuccess={(msg) => { showToast(msg); fetchStats(); }}
+        />
+      )}
+
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-xl">health_metrics</span>
-                </div>
+                <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
                 <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">GraamSehat</span>
               </div>
               <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-800 dark:text-slate-200">Admin</span>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-2 text-slate-400"><span className="material-symbols-outlined">notifications</span></button>
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">AD</div>
+              {/* Add Doctor Button */}
+              <button
+                onClick={() => setShowAddDoctor(true)}
+                className="hidden md:flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-sm">stethoscope</span>
+                Add Doctor
+              </button>
+              {/* Add Patient Button */}
+              <button
+                onClick={() => setShowAddPatient(true)}
+                className="hidden md:flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-xl text-sm font-bold hover:border-primary hover:text-primary transition-all"
+              >
+                <span className="material-symbols-outlined text-sm">person_add</span>
+                Add Patient
+              </button>
+
+              {/* Notifications Bell */}
+              <div className="relative" ref={notifsRef}>
+                <button
+                  onClick={() => { setShowNotifs((v) => !v); setShowAccountMenu(false); }}
+                  className="relative p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all"
+                >
+                  <span className="material-symbols-outlined">notifications</span>
+                  {notifications.length > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+                {showNotifs && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">Recent Activity</p>
+                      <span className="text-xs text-slate-400">{notifications.length} consultations</span>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">notifications_none</span>
+                        <p className="text-sm text-slate-400">No recent activity</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-80 overflow-y-auto">
+                        {notifications.map((n) => (
+                          <div key={n.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.isEmergency ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"}`}>
+                              <span className="material-symbols-outlined text-sm">{n.isEmergency ? "pending" : "check_circle"}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{n.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{n.body}</p>
+                            </div>
+                            <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">{n.time}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Avatar & Logout */}
+              <div className="relative" ref={accountRef}>
+                <button
+                  onClick={() => { setShowAccountMenu((v) => !v); setShowNotifs(false); }}
+                  className="w-9 h-9 rounded-full bg-slate-900 dark:bg-slate-700 text-white flex items-center justify-center text-xs font-bold hover:opacity-80 transition-opacity"
+                >
+                  AD
+                </button>
+                {showAccountMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                    <div className="px-4 py-4 border-b border-slate-100 dark:border-slate-800">
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">Administrator</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Nabha Block District</p>
+                      <span className="mt-2 inline-block text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Admin</span>
+                    </div>
+                    <div className="p-2">
+                      <button
+                        onClick={() => { setShowAddDoctor(true); setShowAccountMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-lg">stethoscope</span>
+                        Add Doctor
+                      </button>
+                      <button
+                        onClick={() => { setShowAddPatient(true); setShowAccountMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-lg">person_add</span>
+                        Add Patient
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 font-semibold transition-colors mt-1"
+                      >
+                        <span className="material-symbols-outlined text-lg">logout</span>
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -101,6 +445,13 @@ export default function AdminDashboard() {
               District Health Overview — <span className="text-slate-900 dark:text-white font-bold">Nabha Block</span>
             </h1>
             <div className="flex gap-2">
+              {/* Mobile Add buttons */}
+              <button onClick={() => setShowAddDoctor(true)} className="md:hidden bg-primary text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">stethoscope</span> Add Doctor
+              </button>
+              <button onClick={() => setShowAddPatient(true)} className="md:hidden border border-slate-200 dark:border-slate-700 px-3 py-1 rounded text-xs font-bold flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                <span className="material-symbols-outlined text-xs">person_add</span> Add Patient
+              </button>
               <button onClick={() => window.print()} className="bg-primary text-white px-3 py-1 rounded text-sm font-medium flex items-center gap-1 hover:opacity-90">
                 <span className="material-symbols-outlined text-sm">download</span> Export
               </button>
@@ -209,7 +560,15 @@ export default function AdminDashboard() {
 
               {/* Doctor Availability */}
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 flex flex-col">
-                <h3 className="text-slate-900 dark:text-white font-bold mb-4">Doctor Availability</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-slate-900 dark:text-white font-bold">Doctor Availability</h3>
+                  <button
+                    onClick={() => setShowAddDoctor(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span> Add
+                  </button>
+                </div>
                 <div className="space-y-3 flex-1">
                   {(stats?.doctors ?? []).map((doc) => (
                     <div key={doc.id} className={`flex items-center gap-3 p-3 border border-slate-100 dark:border-slate-700 rounded-lg ${doc.isAvailable ? "bg-emerald-50/50 dark:bg-emerald-900/10" : "opacity-60 grayscale bg-slate-50 dark:bg-slate-800"}`}>
@@ -227,6 +586,13 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                  {(stats?.doctors ?? []).length === 0 && (
+                    <div className="text-center py-6">
+                      <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">stethoscope</span>
+                      <p className="text-sm text-slate-400 mb-3">No doctors added yet</p>
+                      <button onClick={() => setShowAddDoctor(true)} className="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Add First Doctor</button>
+                    </div>
+                  )}
                 </div>
               </div>
 

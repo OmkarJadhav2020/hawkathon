@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type HealthRecord = { id: string; type: string; title: string; date: string; fileUrl: string | null };
@@ -348,12 +349,10 @@ export default function PatientDashboard() {
 
       {/* Header */}
       <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
-        <div className="flex items-center gap-3 text-primary">
-          <div className="size-8 flex items-center justify-center rounded-lg bg-primary/10">
-            <span className="material-symbols-outlined text-primary text-xl">health_and_safety</span>
-          </div>
+        <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
+          <Image src="/logo.png" alt="GraamSehat Logo" width={36} height={36} className="rounded-lg object-contain" />
           <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
-        </div>
+        </Link>
         <div className="flex flex-1 justify-end gap-3 items-center">
           <nav className="hidden md:flex gap-6 mr-6">
             <a className="text-primary font-semibold flex items-center gap-1 text-sm" href="#">

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { format } from "date-fns";
 
 type PatientInfo = {
   id: string;
@@ -25,6 +27,170 @@ type Consultation = {
   prescription: { id: string } | null;
 };
 
+// ─── Patient Records Modal ─────────────────────────────────────────────────────
+function PatientRecordsModal({ patient, doctorName, onClose }: { patient: PatientInfo; doctorName: string; onClose: () => void }) {
+  const [records, setRecords] = useState<any[]>([]);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addingNote, setAddingNote] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState("VITAL");
+
+  const fetchRecords = async () => {
+    try {
+      const res = await fetch(`/api/records?userId=${patient.id}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setRecords(data.healthRecords ?? []);
+      setConsultations(data.consultations ?? []);
+    } catch {
+      console.error("Failed to fetch records");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRecords(); }, [patient.id]);
+
+  const handleAddRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+    setAddingNote(true);
+    try {
+      const res = await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: patient.id, type: newType, title: newTitle, description: newDesc, doctorName }),
+      });
+      if (res.ok) {
+        setNewTitle(""); setNewDesc("");
+        fetchRecords();
+      }
+    } catch {
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+        {/* Modal Header */}
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+              {patient.name.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{patient.name}</h2>
+              <p className="text-sm text-slate-500">ID: {patient.id.slice(-8).toUpperCase()} • Blood: {patient.bloodGroup ?? "Unknown"} • {patient.village ?? "—"}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-slate-500">close</span>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column: Existing Records */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">monitor_heart</span> Clinical & Lab Records
+              </h3>
+              {loading ? (
+                <div className="animate-pulse flex flex-col gap-3">
+                  <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+                  <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+                </div>
+              ) : records.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">No records found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {records.map((r: any) => (
+                    <div key={r.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">{r.type.replace("_", " ")}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{format(new Date(r.createdAt), "dd MMM yyyy, p")}</span>
+                      </div>
+                      <p className="font-bold text-sm text-slate-800 dark:text-white my-1">{r.title}</p>
+                      {r.description && <p className="text-xs text-slate-500 whitespace-pre-wrap">{r.description}</p>}
+                      {r.doctorName && <p className="text-[10px] text-slate-400 mt-2 font-medium">Added by: {r.doctorName}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">history</span> Past Consultations
+              </h3>
+              {loading ? (
+                <div className="animate-pulse h-24 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+              ) : consultations.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">No past consultations.</p>
+              ) : (
+                <div className="space-y-3">
+                  {consultations.map((c: any) => (
+                    <div key={c.id} className="p-3 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{format(new Date(c.createdAt), "dd MMM yyyy")}</p>
+                        <p className="text-xs text-slate-500">{c.doctor?.name ?? "Unknown Doctor"}</p>
+                      </div>
+                      <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">COMPLETED</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Add New Record */}
+          <div className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl h-fit border border-primary/10">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">add_notes</span> Add Clinical Note / Vital
+            </h3>
+            <form onSubmit={handleAddRecord} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Record Type</label>
+                <select value={newType} onChange={(e) => setNewType(e.target.value)} className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm outline-none">
+                  <option value="VITAL">Vitals (BP, Sugar, Temp, etc.)</option>
+                  <option value="LAB_RESULT">Lab Result Summary</option>
+                  <option value="GENERAL">General Clinical Note</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Title *</label>
+                <input
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g., Blood Sugar Fasting, Blood Pressure"
+                  className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Details / Value</label>
+                <textarea
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="e.g., 120 mg/dL, 140/90 mmHg, Patient seems stable..."
+                  className="w-full h-24 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm outline-none resize-none"
+                />
+              </div>
+              <button disabled={addingNote || !newTitle.trim()} type="submit" className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                {addingNote ? "Saving..." : "Save Record to Patient History"} <span className="material-symbols-outlined text-sm">save</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DoctorDashboard() {
   const router = useRouter();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -38,6 +204,7 @@ export default function DoctorDashboard() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Consultation[]>([]);
   const [doctorName, setDoctorName] = useState("Dr. Physician");
+  const [showRecordsModal, setShowRecordsModal] = useState(false);
   const searchRef = useRef<NodeJS.Timeout | null>(null);
 
   // Route Protection & User Data
@@ -209,14 +376,17 @@ export default function DoctorDashboard() {
       <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-3">
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2 text-primary">
-              <span className="material-symbols-outlined text-3xl">health_metrics</span>
+            <Link href="/dashboard/doctor" className="flex items-center gap-2 text-primary">
+              <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
               <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GraamSehat</h2>
-            </div>
+            </Link>
             <nav className="hidden md:flex items-center gap-6">
               <span className="text-sm font-semibold text-primary border-b-2 border-primary pb-1 cursor-default">Dashboard</span>
               <button 
-                onClick={() => showToast("Select a patient from the queue to view their records.")}
+                onClick={() => {
+                  if (activeConsult) setShowRecordsModal(true);
+                  else showToast("Select a patient from the queue to view their records.");
+                }}
                 className="text-sm font-medium text-slate-500 hover:text-primary transition-colors cursor-pointer"
               >
                 Patient Records
@@ -239,6 +409,15 @@ export default function DoctorDashboard() {
           </div>
         </div>
       </header>
+
+      {/* Patient Records Modal */}
+      {showRecordsModal && activeConsult && (
+        <PatientRecordsModal 
+          patient={activeConsult.patient} 
+          doctorName={doctorName} 
+          onClose={() => setShowRecordsModal(false)} 
+        />
+      )}
 
       {(!doctorId || loading) ? (
         <div className="flex-1 flex items-center justify-center">
@@ -570,7 +749,7 @@ export default function DoctorDashboard() {
                     <span className="material-symbols-outlined text-sm">print</span>Print
                   </button>
                   <button
-                    onClick={() => showToast(`Opening comprehensive records for ${activeConsult.patient.name}...`)}
+                    onClick={() => setShowRecordsModal(true)}
                     className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">folder_open</span>Records

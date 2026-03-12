@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
 import QRCode from "qrcode";
 
@@ -60,6 +61,8 @@ export default function HealthRecordsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
 
@@ -75,6 +78,21 @@ export default function HealthRecordsPage() {
   }, [router]);
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+  const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : null;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setShowAccountMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/");
+  };
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -125,21 +143,46 @@ export default function HealthRecordsPage() {
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary p-1.5 rounded-lg"><span className="material-symbols-outlined text-white text-2xl">health_and_safety</span></div>
-            <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">GraamSehat</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="/dashboard/patient">Home</Link>
-            <Link className="text-sm font-medium text-slate-500 hover:text-primary transition-colors" href="/dashboard/patient/appointments">Appointments</Link>
+      <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3 lg:px-20 sticky top-0 z-40">
+        <Link href="/dashboard/patient" className="flex items-center gap-3 text-primary">
+          <Image src="/logo.png" alt="GraamSehat Logo" width={32} height={32} className="rounded-lg object-contain" />
+          <h2 className="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight">GraamSehat</h2>
+        </Link>
+        <div className="flex flex-1 justify-end gap-3 items-center">
+          <nav className="hidden md:flex gap-6 mr-6">
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient">Home</Link>
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/appointments">Appointments</Link>
             <a className="text-sm font-semibold text-primary border-b-2 border-primary py-5" href="#">Records</a>
+            <Link className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm" href="/dashboard/patient/orders">My Orders</Link>
           </nav>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
-              {patient?.name?.slice(0, 2).toUpperCase() ?? "PT"}
-            </div>
+          {/* Account Avatar */}
+          <div className="relative" ref={accountRef}>
+            <button
+              onClick={() => setShowAccountMenu((v) => !v)}
+              className="h-10 w-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/30 transition-colors"
+            >
+              {patient?.name?.slice(0, 2).toUpperCase() ?? userName?.slice(0, 2).toUpperCase() ?? "PT"}
+            </button>
+            {showAccountMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                <div className="px-4 py-4 border-b border-slate-100 dark:border-slate-800">
+                  <p className="font-bold text-slate-900 dark:text-white text-sm">{patient?.name ?? userName ?? "Patient"}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{patient?.phone ?? "—"}</p>
+                  <span className="mt-2 inline-block text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">Patient</span>
+                </div>
+                <div className="p-2">
+                  <Link href="/dashboard/patient/records" onClick={() => setShowAccountMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-primary font-semibold transition-colors">
+                    <span className="material-symbols-outlined text-primary text-lg">folder_open</span> Health Records
+                  </Link>
+                  <Link href="/dashboard/patient/orders" onClick={() => setShowAccountMenu(false)} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors">
+                    <span className="material-symbols-outlined text-slate-400 text-lg">receipt_long</span> My Orders
+                  </Link>
+                  <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 font-semibold transition-colors mt-1">
+                    <span className="material-symbols-outlined text-lg">logout</span> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
