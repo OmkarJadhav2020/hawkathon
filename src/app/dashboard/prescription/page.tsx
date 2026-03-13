@@ -190,9 +190,9 @@ function PrescriptionContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Link href="/dashboard/patient" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+              <button onClick={() => window.history.back()} type="button" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
                 <span translate="no" className="material-symbols-outlined notranslate">arrow_back</span>
-              </Link>
+              </button>
               <div className="bg-primary p-1.5 rounded-lg text-white">
                 <span translate="no" className="material-symbols-outlined text-2xl notranslate">medical_services</span>
               </div>

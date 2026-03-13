@@ -134,13 +134,16 @@ function PatientRecordsModal({ patient, doctorName, onClose }: { patient: Patien
               ) : (
                 <div className="space-y-3">
                   {consultations.map((c: any) => (
-                    <div key={c.id} className="p-3 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-between">
+                    <Link key={c.id} href={`/dashboard/prescription?consultId=${c.id}`} className="group p-3 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-between hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all cursor-pointer">
                       <div>
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{format(new Date(c.createdAt), "dd MMM yyyy")}</p>
                         <p className="text-xs text-slate-500">{c.doctor?.name ?? "Unknown Doctor"}</p>
                       </div>
-                      <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">COMPLETED</span>
-                    </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">COMPLETED</span>
+                        <span translate="no" className="material-symbols-outlined text-slate-400 group-hover:text-primary notranslate">open_in_new</span>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               )}
