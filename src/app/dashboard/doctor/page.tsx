@@ -358,6 +358,34 @@ export default function DoctorDashboard() {
     window.print();
   };
 
+  const handleCreateLabOrder = async (testName: string) => {
+    if (!activeConsult) {
+      showToast("Select a patient from the queue first.");
+      return;
+    }
+
+    try {
+      showToast(`Generating lab order for ${testName}...`);
+      const res = await fetch("/api/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: activeConsult.patient.id,
+          type: "LAB_RESULT",
+          title: `Order: ${testName}`,
+          description: `Ordered during consultation on ${new Date().toLocaleDateString()}`,
+          doctorName: doctorName
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create lab order");
+      showToast(`✅ Lab order for ${testName} created successfully!`);
+    } catch (err) {
+      console.error("Lab Order Error:", err);
+      showToast("❌ Failed to create lab order. Please try again.");
+    }
+  };
+
   const pending = consultations.filter((c) => c.status === "PENDING");
   const inProgress = consultations.find((c) => c.status === "IN_PROGRESS");
   const completed = consultations.filter((c) => c.status === "COMPLETED").slice(0, 5);
@@ -702,7 +730,7 @@ export default function DoctorDashboard() {
                       ].map((test) => (
                         <button
                           key={test}
-                          onClick={() => showToast(`Lab order for "${test}" noted in consultation.`)}
+                          onClick={() => handleCreateLabOrder(test)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-primary hover:bg-primary/5 transition-all"
                         >
                           <span translate="no" className="material-symbols-outlined text-primary text-sm block mb-1 notranslate">science</span>
