@@ -55,6 +55,21 @@ export async function GET(request: Request) {
       take: 10,
     });
 
+    // Available doctors
+    const doctors = await prisma.user.findMany({
+      where: {
+        role: "DOCTOR",
+        doctorProfile: { isAvailable: true },
+      },
+      select: {
+        id: true,
+        name: true,
+        doctorProfile: {
+          select: { specialization: true },
+        },
+      },
+    });
+
     return NextResponse.json({
       profile: {
         id: asha.id,
@@ -67,6 +82,7 @@ export async function GET(request: Request) {
       },
       patients,
       syncQueue,
+      doctors,
     });
   } catch (error) {
     console.error("ASHA API Error:", error);

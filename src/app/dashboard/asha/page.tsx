@@ -33,6 +33,12 @@ type SyncItem = {
   createdAt: string;
 };
 
+type Doctor = {
+  id: string;
+  name: string;
+  doctorProfile: { specialization: string };
+};
+
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
 
 export default function AshaWorkerDashboard() {
@@ -40,6 +46,7 @@ export default function AshaWorkerDashboard() {
   const [profile, setProfile] = useState<AshaProfile | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [syncQueue, setSyncQueue] = useState<SyncItem[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -82,6 +89,7 @@ export default function AshaWorkerDashboard() {
       const data = await res.json();
       setProfile(data.profile);
       setPatients(data.patients ?? []);
+      setDoctors(data.doctors ?? []);
       // Load offline sync queue from localStorage, combine with server syncQueue
       const localSyncQueueStr = localStorage.getItem("asha_sync_queue");
       const localSyncQueue = localSyncQueueStr ? JSON.parse(localSyncQueueStr) : [];
@@ -260,19 +268,30 @@ export default function AshaWorkerDashboard() {
   };
 
   const handleProxyBook = async (patientId: string, patientName: string) => {
+    if (doctors.length === 0) {
+      showToast("❌ No available doctors found. Please try again later.");
+      return;
+    }
+
     try {
-      showToast(`Booking proxy appointment for ${patientName}...`);
-      // Use the known doctor ID for test environment
-      const doctorId = "cmmnpw2cd0002f770mhrgdj2k";
+      showToast(`Booking appointment for ${patientName}...`);
+      
+      // Use the first available doctor
+      const doctorId = doctors[0].id;
+      
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId, doctorId }),
       });
-      if (!res.ok) throw new Error("Booking failed");
-      showToast(`✅ Successfully booked teleconsultation for ${patientName}!`);
-    } catch {
-      showToast("❌ Failed to book appointment. Please try again.");
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Booking failed");
+      
+      showToast(`✅ Successfully booked teleconsultation with ${doctors[0].name}!`);
+    } catch (err) {
+      console.error("Booking Error:", err);
+      showToast(err instanceof Error ? `❌ ${err.message}` : "❌ Failed to book appointment. Please try again.");
     }
   };
 
@@ -603,7 +622,7 @@ export default function AshaWorkerDashboard() {
                                     onClick={() => handleProxyBook(p.id, p.name)}
                                     className="px-4 py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-xs font-bold transition-all"
                                   >
-                                    Proxy Book
+                                    Book Appointment
                                   </button>
                                 </td>
                               </tr>
@@ -685,7 +704,7 @@ export default function AshaWorkerDashboard() {
                         )}
                       </div>
                       <button onClick={() => handleProxyBook(p.id, p.name)} className="mt-4 w-full py-2 bg-asha/10 hover:bg-asha text-asha hover:text-white rounded-lg text-sm font-bold transition-all">
-                        Proxy Book Appointment
+                        Book Appointment
                       </button>
                     </div>
                   ))}
@@ -696,12 +715,16 @@ export default function AshaWorkerDashboard() {
               {activeNav === "resources" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { label: "Hygiene Basics", sub: "6 modules · Hindi/English", bg: "from-blue-500/20 to-blue-600/40" },
-                    { label: "Maternal Nutrition", sub: "Video guide · 12 mins", bg: "from-green-500/20 to-green-600/40" },
-                    { label: "Immunization Tracker", sub: "Interactive Tool", bg: "from-purple-500/20 to-purple-600/40" },
+                    { label: "Hygiene Basics", sub: "6 modules · Hindi/English", bg: "from-blue-500/20 to-blue-600/40", slug: "hygiene" },
+                    { label: "Maternal Nutrition", sub: "Video guide · 12 mins", bg: "from-green-500/20 to-green-600/40", slug: "maternal" },
+                    { label: "Immunization Tracker", sub: "Interactive Tool", bg: "from-purple-500/20 to-purple-600/40", slug: "immunization" },
                     { label: "Download Offline", sub: "Available offline", bg: "from-slate-300/50 to-slate-400/30", isDashed: true },
                   ].map((card) => (
-                    <button key={card.label} onClick={() => showToast(`Opening "${card.label}"...`)} className={`group relative overflow-hidden rounded-2xl aspect-[4/3] bg-gradient-to-br ${card.bg} border border-white/20 ${card.isDashed ? "border-dashed border-2 border-slate-300 dark:border-slate-600" : ""} cursor-pointer`}>
+                    <button
+                      key={card.label}
+                      onClick={() => card.slug ? router.push(`/dashboard/asha/resources/${card.slug}`) : showToast(`Feature coming soon: ${card.label}`)}
+                      className={`group relative overflow-hidden rounded-2xl aspect-[4/3] bg-gradient-to-br ${card.bg} border border-white/20 ${card.isDashed ? "border-dashed border-2 border-slate-300 dark:border-slate-600" : ""} cursor-pointer shadow-lg shadow-black/5 active:scale-95 transition-all`}
+                    >
                       {card.isDashed ? (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
                           <span translate="no" className="material-symbols-outlined text-3xl notranslate">download</span>

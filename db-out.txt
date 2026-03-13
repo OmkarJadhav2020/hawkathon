@@ -1,0 +1,44 @@
+Doctors in DB: [
+  {
+    "id": "cmmnpw4b00001f7700cwvgvkg",
+    "name": "Dr. Ananya Sharma"
+  },
+  {
+    "id": "cmmo3hffk0001lb04gbefepme",
+    "name": "Dr. Ishan"
+  }
+]
+Patients in DB: [
+  {
+    "id": "cmmnor0af0000uf1of2qn3rnh",
+    "name": "User 9772"
+  },
+  {
+    "id": "cmmnpw2c70000f7707prdd937",
+    "name": "Rajesh Kumar"
+  },
+  {
+    "id": "cmmnsawgp0000f70cet7b7mxs",
+    "name": "Rajesh Kumar"
+  },
+  {
+    "id": "cmmnvflwe0004jp04y441o2xa",
+    "name": "Mansi"
+  },
+  {
+    "id": "cmmnvhcmr000ejx04vtqa04eg",
+    "name": "jahnvi"
+  },
+  {
+    "id": "cmmo0uijz0000f7nkdc73lcw9",
+    "name": "ramu"
+  },
+  {
+    "id": "cmmo3ek190000lb04ap6497sj",
+    "name": "Mansi"
+  },
+  {
+    "id": "cmmo7ahq10000ky04qzwzkacs",
+    "name": "rohan"
+  }
+]
